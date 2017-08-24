@@ -38,7 +38,7 @@ struct $HANDLER_NAME : rapidjson::BaseReaderHandler<> {
 		state = 2;
 		return true;
 	}
-	bool Key(const char* str, rapidjson::SizeType length, bool copy) {
+	bool Key(const char* str, size_t length, bool) {
 		switch (state) {
 		case 1:
 			if (strncmp(str, $TOPLEVEL_FIELD, length))
@@ -67,7 +67,8 @@ struct $HANDLER_NAME : rapidjson::BaseReaderHandler<> {
 		state = 4;
 		return true;
 	}
-	bool String(const char* str, rapidjson::SizeType length, bool copy) {
+	bool String(const char* str, size_t length, bool) {
+		(void)str;(void)length;
 		switch (state) {
 		$STRING_HANDLER;
 		default: $err; return false;

@@ -12,7 +12,9 @@ namespace rapidjson { typedef ::std::size_t SizeType; }
 	if (!strcmp(str, WHAT)) { state = STATE; have |= 1 << BIT; return true; }
 #define $str(WHAT) \
 	if (length >= sizeof WHAT) return false; /* TODO: check utf length */ \
-	memcpy(WHAT, str, length); break;
+	memcpy(WHAT, str, length); \
+	WHAT[length] = 0; \
+	break;
 #define $err \
 	std::cerr << __FILE__ << ":" << __LINE__ << ": json error\n"
 #define $err_(W) \

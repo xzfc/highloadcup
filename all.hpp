@@ -1,8 +1,10 @@
+#pragma once
+
 #include <cstdint>
 #include <string>
 #include <map>
 #include <vector>
-// #include <boost/optional.hpp>
+#include <boost/optional.hpp>
 
 #define _u(x) (x*4+1)
 
@@ -55,10 +57,11 @@ struct All {
 	Visit *get_visit(uint32_t id);
 
 	bool get_visits(
-		std::vector<VisitData> &out //,
-//		std::optional<time_t> from_date,
-//		std::optional<time_t> to_date,
-//		std::optional<std::string> country,
-//		std::optional<uint32_t> toDistance
+		std::vector<VisitData> &out,
+		uint32_t id,
+		boost::optional<time_t> from_date,
+		boost::optional<time_t> to_date,
+		boost::optional<std::string> country,
+		boost::optional<uint32_t> to_distance
 	);
 };
