@@ -15,6 +15,7 @@ bool All::add_location(uint32_t id, const Location &location)
 bool All::add_visit(uint32_t id, const Visit &visit)
 {
 	visits[id] = visit;
+	user_visits[visit.user].insert(id);
 	return true; // TODO
 }
 
@@ -35,7 +36,7 @@ Visit *All::get_visit(uint32_t id)
 	auto f = visits.find(id);
 	return f != visits.end() ? &f->second : nullptr;
 }
-
+#include <iostream>
 bool All::get_visits(
 	std::vector<VisitData> &out,
 	uint32_t id,
@@ -46,19 +47,27 @@ bool All::get_visits(
 )
 {
 	out.clear();
-	for (const auto &visit : visits) {
-		if (visit.second.user == id) {
-			Location *location =
-				get_location(visit.second.location);
-			if (location == nullptr)
-				continue;
+	if (users.count(id) == 0)
+		return false;
 
-			out.push_back({
-				visit.second.mark,
-				visit.second.visited_at,
-				location->place
+	auto my_visits = user_visits.find(id);
+	if (my_visits == user_visits.end())
+		return true;
+
+	for (const auto &visit_ : my_visits->second) {
+		auto visit = visits[visit_];
+		Location *location =
+			get_location(visit.location);
+		if (location == nullptr)
+			continue;
+
+		// TODO: check optional args
+
+		out.push_back({
+			visit.mark,
+			visit.visited_at,
+			location->place
 			});
-		}
 	}
 	return true;
 }

@@ -1,8 +1,9 @@
 #pragma once
 
 #include <cstdint>
-#include <string>
 #include <map>
+#include <set>
+#include <string>
 #include <vector>
 #include <boost/optional.hpp>
 
@@ -43,6 +44,8 @@ struct All {
 	std::map<uint32_t, User>     users;
 	std::map<uint32_t, Location> locations;
 	std::map<uint32_t, Visit>    visits;
+
+	std::map<uint32_t, std::set<uint32_t>> user_visits;
 
 	bool add_user(uint32_t id, const User &user);
 	bool add_location(uint32_t id, const Location &location);
