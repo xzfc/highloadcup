@@ -1,6 +1,8 @@
 #include <cstdint>
 #include <string>
 #include <map>
+#include <vector>
+// #include <boost/optional.hpp>
 
 #define _u(x) (x*4+1)
 
@@ -29,6 +31,12 @@ struct Visit {
 	uint8_t  mark; // 0..5
 };
 
+struct VisitData {
+	uint8_t     mark;
+	time_t      visited_at;
+	std::string place;
+};
+
 struct All {
 	std::map<uint32_t, User>     users;
 	std::map<uint32_t, Location> locations;
@@ -37,5 +45,20 @@ struct All {
 	bool add_user(uint32_t id, const User &user);
 	bool add_location(uint32_t id, const Location &location);
 	bool add_visit(uint32_t id, const Visit &visit);
-};
 
+	bool update_user(...); // TODO
+	bool update_location(...); // TODO
+	bool update_visit(...); // TODO
+
+	User *get_user(uint32_t id);
+	Location *get_location(uint32_t id);
+	Visit *get_visit(uint32_t id);
+
+	bool get_visits(
+		std::vector<VisitData> &out //,
+//		std::optional<time_t> from_date,
+//		std::optional<time_t> to_date,
+//		std::optional<std::string> country,
+//		std::optional<uint32_t> toDistance
+	);
+};

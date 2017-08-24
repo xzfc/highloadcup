@@ -1,9 +1,13 @@
-ifeq "$(G)" "1"
-export LIBRARY_PATH=$(HOME)/.nix-profile/lib
-export CPLUS_INCLUDE_PATH=$(HOME)/.nix-profile/include
-endif
-
-CXXFLAGS := -std=c++17 -O3
+CXXFLAGS := -std=c++1y -O3 -MMD -MP
 LDFLAGS := -lboost_system -lboost_filesystem
+SRC := main.cpp json.cpp
+OBJ := $(SRC:.cpp=.o)
+DEP := $(SRC:.cpp=.d)
 
-main: main.o json.o
+main: $(OBJ)
+
+.PHONY: clean
+clean:
+	rm -f $(DEP) $(OBJ)
+
+-include $(DEP)
