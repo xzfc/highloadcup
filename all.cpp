@@ -15,7 +15,8 @@ bool All::add_location(uint32_t id, const Location &location)
 bool All::add_visit(uint32_t id, const Visit &visit)
 {
 	visits[id] = visit;
-	user_visits[visit.user].insert(id);
+
+	user_visits.insert({ visit.user, visit.visited_at, id });
 	return true; // TODO
 }
 
@@ -50,23 +51,25 @@ bool All::get_visits(
 	if (users.count(id) == 0)
 		return false;
 
-	auto my_visits = user_visits.find(id);
-	if (my_visits == user_visits.end())
+	if (!from_date) from_date = { std::numeric_limits<time_t>::min() };
+	if (!to_date)   to_date   = { std::numeric_limits<time_t>::max() };
+
+	if (*from_date >= *to_date)
 		return true;
 
-	for (const auto &visit_ : my_visits->second) {
-		auto visit = visits[visit_];
-		Location *location =
-			get_location(visit.location);
+	auto it  = user_visits.lower_bound({ id, *from_date, 0 });
+	if (it == user_visits.end())
+		return true;
+	auto end = user_visits.upper_bound({ id, *to_date,   0xFFFFFFFFu });
+
+	for (; it != end; it++) {
+		auto visit = visits[it->visit];
+		Location *location = get_location(visit.location);
 		if (location == nullptr)
 			continue;
 
-		if (false
-			|| from_date && visit.visited_at <= *from_date
-			|| to_date   && visit.visited_at >= *to_date
-			|| country   && location->country != *country
-			|| to_distance && location->distance >= *to_distance
-		)
+		if (country     && location->country != *country ||
+		    to_distance && location->distance >= *to_distance)
 			continue;
 
 		out.push_back({

@@ -40,12 +40,31 @@ struct VisitData {
 	std::string place;
 };
 
+struct UserVisit {
+	uint32_t user;
+	time_t   visited_at;
+	uint32_t visit;
+};
+
+static bool operator <(const UserVisit &a, const UserVisit &b) {
+	if (a.user < b.user) return true;
+	if (a.user > b.user) return false;
+
+	if (a.visited_at < b.visited_at) return true;
+	if (a.visited_at > b.visited_at) return false;
+
+	if (a.visit < b.visit) return true;
+	if (a.visit > b.visit) return false;
+
+	return false;
+}
+
 struct All {
 	std::map<uint32_t, User>     users;
 	std::map<uint32_t, Location> locations;
 	std::map<uint32_t, Visit>    visits;
 
-	std::map<uint32_t, std::set<uint32_t>> user_visits;
+	std::set<UserVisit> user_visits;
 
 	bool add_user(uint32_t id, const User &user);
 	bool add_location(uint32_t id, const Location &location);

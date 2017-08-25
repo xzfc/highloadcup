@@ -62,7 +62,7 @@ const char *json_serialize(const std::vector<VisitData> &data) {
 
 	for (const auto &i : data) {
 		writer.StartObject();
-		writer.String("id");         writer.Uint(i.mark);
+		writer.String("mark");       writer.Uint(i.mark);
 		writer.String("visited_at"); writer.Uint(i.visited_at);
 		writer.String("place");      writer.String(i.place.c_str());
 		writer.EndObject();
