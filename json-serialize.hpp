@@ -45,6 +45,7 @@ const char *json_serialize(uint32_t id, const Visit &visit) {
 	writer.String("location");   writer.Uint(visit.location);
 	writer.String("user");       writer.Uint(visit.user);
 	writer.String("visited_at"); writer.Uint(visit.visited_at);
+	writer.String("mark");       writer.Uint(visit.mark);
 
 	writer.EndObject();
 	return sb.GetString();
@@ -53,6 +54,9 @@ const char *json_serialize(uint32_t id, const Visit &visit) {
 const char *json_serialize(const std::vector<VisitData> &data) {
 	rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
 	sb.Clear();
+
+	writer.StartObject();
+	writer.String("visits");
 
 	writer.StartArray();
 
@@ -65,6 +69,7 @@ const char *json_serialize(const std::vector<VisitData> &data) {
 	}
 
 	writer.EndArray();
+	writer.EndObject();
 
 	return sb.GetString();
 }

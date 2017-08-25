@@ -89,26 +89,23 @@ namespace rapidjson { typedef ::std::size_t SizeType; }
 #define $STRING_HANDLER
 #include "json_tmpl.hpp"
 
-#define PATH_PREFIX "/home/alice/dist/github.com/sat2707/hlcupdocs/data/FULL/data/"
-
 bool starts_with(const std::string &str, const char *prefix)
 {
 	return str.compare(0, strlen(prefix), prefix) == 0;
 }
 
 template<class T>
-bool starts_with(const T& input, const T& match)
-{
+bool starts_with(const T& input, const T& match) {
     return input.size() >= match.size() &&
 	    std::equal(match.begin(), match.end(), input.begin());
 }
 
-void parse(All &all) {
+void parse(All &all, const char *dir) {
 	char buffer[2048];
 	rapidjson::Reader reader;
 	FILE *fp;
 
-	for (auto &it: boost::filesystem::directory_iterator(PATH_PREFIX)) {
+	for (auto &it: boost::filesystem::directory_iterator(dir)) {
 		auto fname = it.path().filename().string();
 		fp = fopen(it.path().string().c_str(), "r");
 		rapidjson::FileReadStream stream(fp, buffer, sizeof buffer);

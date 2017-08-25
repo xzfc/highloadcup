@@ -27,30 +27,9 @@ static void do_resp(
 	response << "Content-Length: " << data.length() << "\r\n\r\n" << data;
 }
 
-static boost::optional<std::string> query_get(
-		const SimpleWeb::CaseInsensitiveMultimap &query,
-		const char *key
-	)
-{
-	auto it = query.find(key);
-	if (it == query.end())
-		return {};
-	return it->second;
-}
-
-template <typename T, typename Func>
-auto operator|(const boost::optional<T>& opt, Func&& func)
-	-> boost::optional<decltype(func(*opt))>
-{
-	using OutType = boost::optional<decltype(func(*opt))>;
-	return (opt) ? OutType(func(*opt)) : boost::none;
-}
-
-
-
-void start_server(All &all) {
+void start_server(All &all, uint16_t port) {
 	HttpServer server;
-	server.config.port = 1234;
+	server.config.port = port;
 
 	server.resource["^/users/([0-9]+)$"]["GET"] =
 		[&all](ResponsePtr response, RequestPtr request) {
@@ -126,8 +105,8 @@ void start_server(All &all) {
 		};
 
 	server.default_resource["GET"] =
-		[](ResponsePtr response, RequestPtr request) {
-			do_resp(*response, 404, "Not found");
+		[](ResponsePtr response, RequestPtr) {
+			do_resp(*response, 404, "");
 		};
 
 	std::cout << "Started\n";

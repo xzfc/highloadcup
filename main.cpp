@@ -1,16 +1,15 @@
 #include "all.hpp"
 #include <iostream>
 
-void parse(All &all);
-void start_server(All &all);
-int main()
-{
+void parse(All &all, const char *dir);
+void start_server(All &all, uint16_t port);
+
+int main(int argc, char **argv) {
+	if (argc != 3) {
+		std::cerr << "Usage: " << argv[0] << " PATH PORT\n";
+		return 1;
+	}
 	All all;
-	parse(all);
-
-	std::cout << all.users.size() << "\n";
-	std::cout << all.locations.size() << "\n";
-	std::cout << all.visits.size() << "\n";
-
-	start_server(all);
+	parse(all, argv[1]);
+	start_server(all, atoi(argv[2]));
 }

@@ -61,7 +61,13 @@ bool All::get_visits(
 		if (location == nullptr)
 			continue;
 
-		// TODO: check optional args
+		if (false
+			|| from_date && visit.visited_at <= *from_date
+			|| to_date   && visit.visited_at >= *to_date
+			|| country   && location->country != *country
+			|| to_distance && location->distance >= *to_distance
+		)
+			continue;
 
 		out.push_back({
 			visit.mark,
