@@ -8,16 +8,16 @@ bool All::add_user(uint32_t id, const User &user)
 
 bool All::add_location(uint32_t id, const Location &location)
 {
-	locations[id] = location;
+	locations[id] = std::make_unique<Location>(location);
 	return true; // TODO
 }
 
 bool All::add_visit(uint32_t id, const Visit &visit)
 {
-	visits[id] = visit;
-
-	user_visits.insert({ visit.user, visit.visited_at, id });
-	return true; // TODO
+	auto visit_ptr = std::make_unique<Visit>(visit);
+	user_visits.insert({ visit.user, visit.visited_at, id, visit_ptr.get()});
+	visits[id] = std::move(visit_ptr);
+	return true;
 }
 
 User *All::get_user(uint32_t id)
@@ -29,13 +29,13 @@ User *All::get_user(uint32_t id)
 Location *All::get_location(uint32_t id)
 {
 	auto f = locations.find(id);
-	return f != locations.end() ? &f->second : nullptr;
+	return f != locations.end() ? f->second.get() : nullptr;
 }
 
 Visit *All::get_visit(uint32_t id)
 {
 	auto f = visits.find(id);
-	return f != visits.end() ? &f->second : nullptr;
+	return f != visits.end() ? f->second.get() : nullptr;
 }
 #include <iostream>
 bool All::get_visits(
@@ -63,7 +63,7 @@ bool All::get_visits(
 	auto end = user_visits.upper_bound({ id, *to_date,   0xFFFFFFFFu });
 
 	for (; it != end; it++) {
-		const auto &visit = visits[it->visit];
+		const auto &visit = *it->visit_ptr;
 		Location *location = get_location(visit.location);
 		if (location == nullptr)
 			continue;

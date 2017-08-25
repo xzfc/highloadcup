@@ -45,6 +45,8 @@ struct UserVisit {
 	uint32_t user;
 	time_t   visited_at;
 	uint32_t visit;
+
+	Visit *visit_ptr;
 };
 
 static bool operator <(const UserVisit &a, const UserVisit &b) {
@@ -62,8 +64,8 @@ static bool operator <(const UserVisit &a, const UserVisit &b) {
 
 struct All {
 	std::map<uint32_t, User>     users;
-	std::map<uint32_t, Location> locations;
-	std::map<uint32_t, Visit>    visits;
+	std::map<uint32_t, std::unique_ptr<Location>> locations;
+	std::map<uint32_t, std::unique_ptr<Visit>>    visits;
 
 	std::set<UserVisit> user_visits;
 
