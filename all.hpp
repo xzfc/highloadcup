@@ -5,6 +5,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <memory>
 #include <boost/optional.hpp>
 
 #define _u(x) (x*4+1)

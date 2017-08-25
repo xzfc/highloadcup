@@ -63,7 +63,7 @@ bool All::get_visits(
 	auto end = user_visits.upper_bound({ id, *to_date,   0xFFFFFFFFu });
 
 	for (; it != end; it++) {
-		auto visit = visits[it->visit];
+		const auto &visit = visits[it->visit];
 		Location *location = get_location(visit.location);
 		if (location == nullptr)
 			continue;

@@ -1,5 +1,6 @@
 #include "all.hpp"
 #include "json-serialize.hpp"
+#include "bench.hpp"
 
 #include <boost/lexical_cast.hpp>
 
@@ -58,22 +59,31 @@ void start_server(All &all, uint16_t port) {
 				do_resp(*response, 404, "Not found");
 		};
 
+	bench b0, b1, b2, b3, b4;
 	server.resource["^/users/([0-9]+)/visits$"]["GET"] =
-		[&all](ResponsePtr response, RequestPtr request) {
+		[&](ResponsePtr response, RequestPtr request) {
+			auto bt = bench::now();
 			uint32_t id = atou32(request->path_match[1]);
+			b0.ok(bt);
+
+			bt = bench::now();
 			User *user = all.get_user(id);
 			if (user == nullptr) {
 				do_resp(*response, 404, "Not found");
 				return;
 			}
+			b1.ok(bt);
 
 			boost::optional<time_t> from_date;
 			boost::optional<time_t> to_date;
 			boost::optional<std::string> country;
 			boost::optional<uint32_t> to_distance;
 
+			bt = bench::now();
 			auto query = request->parse_query_string();
+			b2.ok(bt);
 
+			bt = bench::now();
 			try {
 				auto it = query.find("fromDate");
 				if (it != query.end())
@@ -94,15 +104,31 @@ void start_server(All &all, uint16_t port) {
 				do_resp(*response, 400, "Bad param");
 				return;
 			}
+			b3.ok(bt);
 
 			static thread_local std::vector<VisitData> out;
+			bt = bench::now();
 			bool ok = all.get_visits(
 					out, id, from_date, to_date, country, to_distance);
+			b4.ok(bt);
 			if (ok)
 				do_resp(*response, 200, json_serialize(out));
 			else
 				do_resp(*response, 404, "Not found");
 		};
+
+	server.resource["^/locations/([0-9]+)/avg$"]["GET"] = 
+		[&all](ResponsePtr response, RequestPtr request) {
+			uint32_t id = atou32(request->path_match[1]);
+
+		};
+
+	server.resource["^/info$"]["GET"] = 
+		[&](ResponsePtr response, RequestPtr request) {
+			auto resp = b0.str() + b1.str() + b2.str() + b3.str() + b4.str();
+			do_resp(*response, 200, resp);
+		};
+
 
 	server.default_resource["GET"] =
 		[](ResponsePtr response, RequestPtr) {
