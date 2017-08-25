@@ -24,7 +24,7 @@ namespace rapidjson { typedef ::std::size_t SizeType; }
 #define $HANDLER_NAME    UserHandler
 #define $LOCAL_VAR       User user
 #define $TOPLEVEL_FIELD  "users"
-#define $ADD_NEW         all.add_user(id, user)
+#define $ADD_NEW         all.add_user(user)
 #define $KEY_NUMBER      6
 #define $KEY_HANDLER \
 	$key("id",         10, 0); \
@@ -34,7 +34,7 @@ namespace rapidjson { typedef ::std::size_t SizeType; }
 	$key("gender",     14, 4); \
 	$key("birth_date", 15, 5)
 #define $INT_HANDLER \
-	case 10: id = val;              break; \
+	case 10: user.id = val;         break; \
 	case 15: user.birth_date = val; break
 #define $STRING_HANDLER \
 	case 11: $str(user.email); \
@@ -51,7 +51,7 @@ namespace rapidjson { typedef ::std::size_t SizeType; }
 #define $HANDLER_NAME    LocationsHandler
 #define $LOCAL_VAR       Location location
 #define $TOPLEVEL_FIELD  "locations"
-#define $ADD_NEW         all.add_location(id, location)
+#define $ADD_NEW         all.add_location(location)
 #define $KEY_NUMBER      5
 #define $KEY_HANDLER \
 	$key("id",         10, 0); \
@@ -60,7 +60,7 @@ namespace rapidjson { typedef ::std::size_t SizeType; }
 	$key("city",       13, 3); \
 	$key("distance",   14, 4)
 #define $INT_HANDLER \
-	case 10: id = val;                break; \
+	case 10: location.id = val;       break; \
 	case 14: location.distance = val; break
 #define $STRING_HANDLER \
 	case 11: location.place = str; \
@@ -72,7 +72,7 @@ namespace rapidjson { typedef ::std::size_t SizeType; }
 #define $HANDLER_NAME    VisitsHandler
 #define $LOCAL_VAR       Visit visit
 #define $TOPLEVEL_FIELD  "visits"
-#define $ADD_NEW         all.add_visit(id, visit)
+#define $ADD_NEW         all.add_visit(visit)
 #define $KEY_NUMBER      5
 #define $KEY_HANDLER \
 	$key("id",         10, 0); \
@@ -81,7 +81,7 @@ namespace rapidjson { typedef ::std::size_t SizeType; }
 	$key("visited_at", 13, 3); \
 	$key("mark",       14, 4)
 #define $INT_HANDLER \
-	case 10: id = val;                break; \
+	case 10: visit.id = val;          break; \
 	case 11: visit.location = val;    break; \
 	case 12: visit.user = val;        break; \
 	case 13: visit.visited_at = val;  break; /* TODO: timestamp */ \

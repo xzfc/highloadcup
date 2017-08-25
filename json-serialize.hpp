@@ -5,12 +5,12 @@
 
 static thread_local rapidjson::StringBuffer sb;
 
-const char *json_serialize(uint32_t id, const User &user) {
+const char *json_serialize(const User &user) {
 	rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
 	sb.Clear();
 	writer.StartObject();
 
-	writer.String("id");         writer.Uint(id);
+	writer.String("id");         writer.Uint(user.id);
 	writer.String("email");      writer.String(user.email);
 	writer.String("first_name"); writer.String(user.first_name);
 	writer.String("last_name");  writer.String(user.last_name);
@@ -21,12 +21,12 @@ const char *json_serialize(uint32_t id, const User &user) {
 	return sb.GetString();
 }
 
-const char *json_serialize(uint32_t id, const Location &location) {
+const char *json_serialize(const Location &location) {
 	rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
 	sb.Clear();
 	writer.StartObject();
 
-	writer.String("id");         writer.Uint(id);
+	writer.String("id");         writer.Uint(location.id);
 	writer.String("place");      writer.String(location.place.c_str());
 	writer.String("country");    writer.String(location.country);
 	writer.String("city");       writer.String(location.city);
@@ -36,12 +36,12 @@ const char *json_serialize(uint32_t id, const Location &location) {
 	return sb.GetString();
 }
 
-const char *json_serialize(uint32_t id, const Visit &visit) {
+const char *json_serialize(const Visit &visit) {
 	rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
 	sb.Clear();
 	writer.StartObject();
 
-	writer.String("id");         writer.Uint(id);
+	writer.String("id");         writer.Uint(visit.id);
 	writer.String("location");   writer.Uint(visit.location);
 	writer.String("user");       writer.Uint(visit.user);
 	writer.String("visited_at"); writer.Uint(visit.visited_at);

@@ -11,5 +11,6 @@ int main(int argc, char **argv) {
 	}
 	All all;
 	parse(all, argv[1]);
+	all.optimize();
 	start_server(all, atoi(argv[2]));
 }

@@ -2,7 +2,6 @@ struct $HANDLER_NAME : rapidjson::BaseReaderHandler<> {
 	All &all;
 	int state = 0;
 
-	uint32_t id;
 	$LOCAL_VAR;
 	uint8_t have;
 

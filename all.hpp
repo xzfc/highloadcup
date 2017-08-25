@@ -11,7 +11,7 @@
 #define _u(x) (x*4+1)
 
 struct User {
-	// uint32_t id;
+	uint32_t id;
 	char     email[_u(100)];
 	char     first_name[_u(50)];
 	char     last_name[_u(50)];
@@ -20,7 +20,7 @@ struct User {
 };
 
 struct Location {
-	// uint32_t    id;
+	uint32_t    id;
 	std::string place;
 	char        country[_u(50)];
 	char        city[_u(50)];
@@ -28,7 +28,7 @@ struct Location {
 };
 
 struct Visit {
-	// uint32_t id;
+	uint32_t id;
 	uint32_t location;
 	uint32_t user;
 	uint32_t visited_at;
@@ -41,37 +41,10 @@ struct VisitData {
 	std::string place;
 };
 
-struct UserVisit {
-	uint32_t user;
-	time_t   visited_at;
-	uint32_t visit;
-
-	Visit *visit_ptr;
-};
-
-static bool operator <(const UserVisit &a, const UserVisit &b) {
-	if (a.user < b.user) return true;
-	if (a.user > b.user) return false;
-
-	if (a.visited_at < b.visited_at) return true;
-	if (a.visited_at > b.visited_at) return false;
-
-	if (a.visit < b.visit) return true;
-	if (a.visit > b.visit) return false;
-
-	return false;
-}
-
 struct All {
-	std::map<uint32_t, User>     users;
-	std::map<uint32_t, std::unique_ptr<Location>> locations;
-	std::map<uint32_t, std::unique_ptr<Visit>>    visits;
-
-	std::set<UserVisit> user_visits;
-
-	bool add_user(uint32_t id, const User &user);
-	bool add_location(uint32_t id, const Location &location);
-	bool add_visit(uint32_t id, const Visit &visit);
+	bool add_user(const User &user);
+	bool add_location(const Location &location);
+	bool add_visit(const Visit &visit);
 
 	bool update_user(...); // TODO
 	bool update_location(...); // TODO
@@ -89,4 +62,6 @@ struct All {
 		boost::optional<std::string> country,
 		boost::optional<uint32_t> to_distance
 	);
+
+	void optimize();
 };

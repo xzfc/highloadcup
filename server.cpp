@@ -36,7 +36,7 @@ void start_server(All &all, uint16_t port) {
 		[&all](ResponsePtr response, RequestPtr request) {
 			uint32_t id = atou32(request->path_match[1]);
 			if (User *user = all.get_user(id))
-				do_resp(*response, 200, json_serialize(id, *user));
+				do_resp(*response, 200, json_serialize(*user));
 			else
 				do_resp(*response, 404, "Not found");
 		};
@@ -45,7 +45,7 @@ void start_server(All &all, uint16_t port) {
 		[&all](ResponsePtr response, RequestPtr request) {
 			uint32_t id = atou32(request->path_match[1]);
 			if (Location *location = all.get_location(id))
-				do_resp(*response, 200, json_serialize(id, *location));
+				do_resp(*response, 200, json_serialize(*location));
 			else
 				do_resp(*response, 404, "Not found");
 		};
@@ -54,7 +54,7 @@ void start_server(All &all, uint16_t port) {
 		[&all](ResponsePtr response, RequestPtr request) {
 			uint32_t id = atou32(request->path_match[1]);
 			if (Visit *visit = all.get_visit(id))
-				do_resp(*response, 200, json_serialize(id, *visit));
+				do_resp(*response, 200, json_serialize(*visit));
 			else
 				do_resp(*response, 404, "Not found");
 		};
