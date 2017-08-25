@@ -51,25 +51,26 @@ const char *json_serialize(const Visit &visit) {
 	return sb.GetString();
 }
 
-const char *json_serialize(const std::vector<VisitData> &data) {
-	rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
-	sb.Clear();
+static rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
 
+void VisitData::start() {
+	writer.Reset(sb);
+	sb.Clear();
 	writer.StartObject();
 	writer.String("visits");
-
 	writer.StartArray();
+}
 
-	for (const auto &i : data) {
-		writer.StartObject();
-		writer.String("mark");       writer.Uint(i.mark);
-		writer.String("visited_at"); writer.Uint(i.visited_at);
-		writer.String("place");      writer.String(i.place.c_str());
-		writer.EndObject();
-	}
+void VisitData::elem(uint8_t mark, time_t visited_at, const char *place) {
+	writer.StartObject();
+	writer.String("mark");       writer.Uint(mark);
+	writer.String("visited_at"); writer.Uint(visited_at);
+	writer.String("place");      writer.String(place);
+	writer.EndObject();
+}
 
+const char *VisitData::stop() {
 	writer.EndArray();
 	writer.EndObject();
-
 	return sb.GetString();
 }

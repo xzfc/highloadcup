@@ -36,9 +36,9 @@ struct Visit {
 };
 
 struct VisitData {
-	uint8_t     mark;
-	time_t      visited_at;
-	std::string place;
+	void start();
+	void elem(uint8_t mark, time_t visited_at, const char *place);
+	const char *stop();
 };
 
 struct All {
@@ -55,12 +55,21 @@ struct All {
 	Visit *get_visit(uint32_t id);
 
 	bool get_visits(
-		std::vector<VisitData> &out,
+		VisitData &out,
 		uint32_t id,
 		boost::optional<time_t> from_date,
 		boost::optional<time_t> to_date,
 		boost::optional<std::string> country,
 		boost::optional<uint32_t> to_distance
+	);
+
+	uint32_t get_avg(
+		uint32_t id,
+		boost::optional<time_t> from_date,
+		boost::optional<time_t> to_date,
+		boost::optional<time_t> from_age,
+		boost::optional<time_t> to_age,
+		boost::optional<bool>   gender_is_male
 	);
 
 	void optimize();

@@ -28,6 +28,20 @@ static void do_resp(
 	response << "Content-Length: " << data.length() << "\r\n\r\n" << data;
 }
 
+static void do_resp(
+		HttpServer::Response &response,
+		int code,
+		const char *data)
+{
+	switch (code) {
+	case 200: response << "HTTP/1.1 200 OK\r\n";                    break;
+	case 400: response << "HTTP/1.1 400 Bad Request\r\n";           break;
+	case 404: response << "HTTP/1.1 404 Not Found\r\n";             break;
+	case 500: response << "HTTP/1.1 500 Internal Server Error\r\n"; break;
+	}
+	response << "Content-Length: " << strlen(data) << "\r\n\r\n" << data;
+}
+
 void start_server(All &all, uint16_t port) {
 	HttpServer server;
 	server.config.port = port;
@@ -59,7 +73,7 @@ void start_server(All &all, uint16_t port) {
 				do_resp(*response, 404, "Not found");
 		};
 
-	bench b0, b1, b2, b3, b4;
+	bench b0, b1, b2, b3, b4, b5;
 	server.resource["^/users/([0-9]+)/visits$"]["GET"] =
 		[&](ResponsePtr response, RequestPtr request) {
 			auto bt = bench::now();
@@ -106,15 +120,15 @@ void start_server(All &all, uint16_t port) {
 			}
 			b3.ok(bt);
 
-			static thread_local std::vector<VisitData> out;
+			static thread_local VisitData out;
+			out.start();
+
 			bt = bench::now();
-			bool ok = all.get_visits(
-					out, id, from_date, to_date, country, to_distance);
+			all.get_visits(out, id, from_date, to_date, country, to_distance);
 			b4.ok(bt);
-			if (ok)
-				do_resp(*response, 200, json_serialize(out));
-			else
-				do_resp(*response, 404, "Not found");
+			bt = bench::now();
+			do_resp(*response, 200, out.stop());
+			b5.ok(bt);
 		};
 
 	server.resource["^/locations/([0-9]+)/avg$"]["GET"] = 
@@ -125,7 +139,8 @@ void start_server(All &all, uint16_t port) {
 
 	server.resource["^/info$"]["GET"] = 
 		[&](ResponsePtr response, RequestPtr request) {
-			auto resp = b0.str() + b1.str() + b2.str() + b3.str() + b4.str();
+			auto resp =
+				b0.str() + b1.str() + b2.str() + b3.str() + b4.str() + b5.str();
 			do_resp(*response, 200, resp);
 		};
 

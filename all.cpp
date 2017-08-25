@@ -131,7 +131,7 @@ Visit *All::get_visit(uint32_t id) {
 }
 
 bool All::get_visits(
-	std::vector<VisitData> &out,
+	VisitData &out,
 	uint32_t id,
 	boost::optional<time_t> from_date,
 	boost::optional<time_t> to_date,
@@ -139,7 +139,6 @@ bool All::get_visits(
 	boost::optional<uint32_t> to_distance
 )
 {
-	out.clear();
 	// if (!allp.tree_user_id.find(id))
 	//	return false;
 
@@ -167,7 +166,7 @@ bool All::get_visits(
 
 	for (; it != end; it++) {
 		auto &visit = *it;
-		Location *location = visit.get_location();
+		LocationP *location = visit.get_location();
 		if (location == nullptr)
 			continue;
 
@@ -175,11 +174,7 @@ bool All::get_visits(
 		    to_distance && location->distance >= *to_distance)
 			continue;
 
-		out.push_back({
-			visit.mark,
-			visit.visited_at,
-			location->place
-		});
+		out.elem(visit.mark, visit.visited_at, location->place.c_str());
 	}
 	return true;
 }
