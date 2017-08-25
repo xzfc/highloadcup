@@ -108,19 +108,56 @@ void start_server(All &all, uint16_t port) {
 
 			static thread_local std::vector<VisitData> out;
 			bt = bench::now();
-			bool ok = all.get_visits(
-					out, id, from_date, to_date, country, to_distance);
+			all.get_visits(out, id, from_date, to_date, country, to_distance);
 			b4.ok(bt);
-			if (ok)
-				do_resp(*response, 200, json_serialize(out));
-			else
-				do_resp(*response, 404, "Not found");
+			do_resp(*response, 200, json_serialize(out));
 		};
 
 	server.resource["^/locations/([0-9]+)/avg$"]["GET"] = 
 		[&all](ResponsePtr response, RequestPtr request) {
 			uint32_t id = atou32(request->path_match[1]);
 
+			boost::optional<time_t> from_date;
+			boost::optional<time_t> to_date;
+			boost::optional<uint8_t> from_age;
+			boost::optional<uint8_t> to_age;
+			boost::optional<bool>   gender_is_male;
+
+			auto query = request->parse_query_string();
+			try {
+				auto it = query.find("fromDate");
+				if (it != query.end())
+					from_date = boost::lexical_cast<time_t>(it->second);
+
+				it = query.find("toDate");
+				if (it != query.end())
+					to_date = boost::lexical_cast<time_t>(it->second);
+
+				it = query.find("fromAge");
+				if (it != query.end())
+					from_age = boost::lexical_cast<time_t>(it->second);
+
+				it = query.find("toAge");
+				if (it != query.end())
+					to_age = boost::lexical_cast<time_t>(it->second);
+
+				it = query.find("gender");
+				if (it != query.end()) {
+					if (it->second == "m")
+						gender_is_male = { true };
+					else if (it->second == "f")
+						gender_is_male = { false };
+					else
+						throw boost::bad_lexical_cast();
+				}
+			} catch (boost::bad_lexical_cast) {
+				do_resp(*response, 400, "Bad param");
+				return;
+			}
+
+			auto avg = all.get_avg(
+					id, from_date, to_date, from_age, to_age, gender_is_male);
+			do_resp(*response, 200, json_serialize(avg));
 		};
 
 	server.resource["^/info$"]["GET"] = 

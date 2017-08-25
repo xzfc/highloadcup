@@ -63,5 +63,14 @@ struct All {
 		boost::optional<uint32_t> to_distance
 	);
 
+	double get_avg(
+		uint32_t id,
+		boost::optional<time_t>  from_date,
+		boost::optional<time_t>  to_date,
+		boost::optional<uint8_t> from_age,
+		boost::optional<uint8_t> to_age,
+		boost::optional<bool>    gender_is_male
+	);
+
 	void optimize();
 };

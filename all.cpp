@@ -20,6 +20,9 @@ struct VisitP : Visit {
 
 	LocationP *location_ptr = 0;
 	LocationP *get_location();
+
+	UserP *user_ptr = 0;
+	UserP *get_user();
 };
 
 struct KeyId {
@@ -49,6 +52,22 @@ struct CompareVisitUserVisited {
 	}
 };
 
+struct CompareVisitLocation {
+	typedef Visit type;
+	const Visit &operator()(const VisitP &v) const {
+		return v;
+	}
+	bool operator()(const Visit &a, const Visit &b) const {
+		if (a.location < b.location) return true;
+		if (a.location > b.location) return false;
+
+		if (a.id < b.id) return true;
+		if (a.id > b.id) return false;
+
+		return false;
+	}
+};
+
 typedef bi::avl_set<
 	UserP,
 	bi::member_hook<UserP, bi::avl_set_member_hook<>, &UserP::hook_id>,
@@ -69,6 +88,13 @@ typedef bi::avl_set<
 
 typedef bi::avl_set<
 	VisitP,
+	bi::member_hook<VisitP, bi::avl_set_member_hook<>, &VisitP::hook_location>,
+	bi::key_of_value<CompareVisitLocation>,
+	bi::compare<CompareVisitLocation>
+> VisitTreeLocation;
+
+typedef bi::avl_set<
+	VisitP,
 	bi::member_hook<VisitP, bi::avl_set_member_hook<>, &VisitP::hook_user_visited>,
 	bi::key_of_value<CompareVisitUserVisited>,
 	bi::compare<CompareVisitUserVisited>
@@ -79,6 +105,7 @@ struct AllP {
 	LocationTreeId        tree_location_id;
 	VisitTreeId           tree_visit_id;
 
+	VisitTreeLocation     tree_visit_location;
 	VisitTreeUserVisited  tree_visit_user_visited;
 };
 
@@ -93,6 +120,16 @@ LocationP *VisitP::get_location() {
 	if (location_ptr == nullptr)
 		std::cout << "Wooo\n";
 	return location_ptr;
+}
+
+UserP *VisitP::get_user() {
+	if (user_ptr != nullptr)
+		return user_ptr;
+	auto f = allp.tree_user_id.find(user);
+	user_ptr = f != allp.tree_user_id.end() ? &*f : nullptr;
+	if (user_ptr == nullptr)
+		std::cout << "Wooo\n";
+	return user_ptr;
 }
 
 
@@ -111,6 +148,7 @@ bool All::add_location(const Location &location) {
 bool All::add_visit(const Visit &visit) {
 	auto e = new VisitP(visit);
 	allp.tree_visit_id.insert(*e);
+	allp.tree_visit_location.insert(*e);
 	allp.tree_visit_user_visited.insert(*e);
 	return true; // TODO
 }
@@ -184,7 +222,54 @@ bool All::get_visits(
 	return true;
 }
 
+double All::get_avg(
+	uint32_t id,
+	boost::optional<time_t>  from_date,
+	boost::optional<time_t>  to_date,
+	boost::optional<uint8_t> from_age,
+	boost::optional<uint8_t> to_age,
+	boost::optional<bool>    gender_is_male
+) {
+	Visit first;
+	first.location = id;
+	first.id = 0;
+
+	Visit last;
+	last.location = id;
+	last.id = 0xFFFFFFFFu;
+
+	auto it = allp.tree_visit_location.lower_bound(first);
+	if (it == allp.tree_visit_location.end())
+		return true;
+
+	auto end = allp.tree_visit_location.upper_bound(last);
+
+	unsigned count = 0, sum = 0;
+	for (; it != end; it++) {
+		auto &visit = *it;
+		User *user = visit.get_user();
+		if (user == nullptr)
+			continue;
+
+		if (from_date      && visit.visited_at < *from_date ||
+		    to_date        && visit.visited_at > *to_date ||
+		    from_age       && visit.visited_at < *from_age ||
+		    to_age         && visit.visited_at > *to_age ||
+		    gender_is_male && user->gender_is_male != *gender_is_male)
+			continue;
+
+		count++;
+		sum += visit.mark;
+	}
+
+	if (count == 0)
+		return 0;
+	return (double)sum / count;
+}
+
 void All::optimize() {
-	for (auto &visit : allp.tree_visit_id)
-		visit.get_location();	
+	for (auto &visit : allp.tree_visit_id) {
+		visit.get_location();
+		visit.get_user();
+	}
 }
