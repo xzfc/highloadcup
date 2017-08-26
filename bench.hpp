@@ -15,7 +15,7 @@ public:
 	std::string str() {
 		std::stringstream ss;
 		auto us = std::chrono::duration_cast<std::chrono::microseconds>(t).count();
-		ss << count << " / " << us << " us\n";
+		ss << count << " / " << us << " us";
 		return ss.str();
 	}
 	static std::chrono::time_point<std::chrono::steady_clock> now() {

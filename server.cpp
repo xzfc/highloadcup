@@ -113,15 +113,18 @@ void start_server(All &all, uint16_t port) {
 			do_resp(*response, 200, json_serialize(out));
 		};
 
+	bench ba0, ba1, ba2, ba3, ba4;
 	server.resource["^/locations/([0-9]+)/avg$"]["GET"] = 
-		[&all](ResponsePtr response, RequestPtr request) {
+		[&](ResponsePtr response, RequestPtr request) {
+			auto bt = bench::now();
 			uint32_t id = atou32(request->path_match[1]);
+			ba0.ok(bt);
 
-			boost::optional<time_t> from_date;
-			boost::optional<time_t> to_date;
+			boost::optional<time_t>  from_date;
+			boost::optional<time_t>  to_date;
 			boost::optional<uint8_t> from_age;
 			boost::optional<uint8_t> to_age;
-			boost::optional<bool>   gender_is_male;
+			boost::optional<bool>    gender_is_male;
 
 			auto query = request->parse_query_string();
 			try {
@@ -155,14 +158,22 @@ void start_server(All &all, uint16_t port) {
 				return;
 			}
 
+			bt = bench::now();
 			auto avg = all.get_avg(
 					id, from_date, to_date, from_age, to_age, gender_is_male);
+			ba1.ok(bt);
+			bt = bench::now();
 			do_resp(*response, 200, json_serialize(avg));
+			ba2.ok(bt);
 		};
 
 	server.resource["^/info$"]["GET"] = 
 		[&](ResponsePtr response, RequestPtr request) {
-			auto resp = b0.str() + b1.str() + b2.str() + b3.str() + b4.str();
+			std::string resp;
+			#define $(X) resp += #X ": " + X.str() + "\n"
+			$(b0); $(b1); $(b2); $(b3); $(b4);
+			$(ba0); $(ba1); $(ba2);
+			#undef $
 			do_resp(*response, 200, resp);
 		};
 

@@ -7,6 +7,8 @@ namespace bi = ::boost::intrusive;
 struct UserP : User {
 	UserP(const User &user) : User(user) { }
 	bi::avl_set_member_hook<> hook_id;
+
+	uint8_t age;
 };
 
 struct LocationP : Location {
@@ -60,6 +62,9 @@ struct CompareVisitLocation {
 	bool operator()(const Visit &a, const Visit &b) const {
 		if (a.location < b.location) return true;
 		if (a.location > b.location) return false;
+
+		if (a.visited_at < b.visited_at) return true;
+		if (a.visited_at > b.visited_at) return false;
 
 		if (a.id < b.id) return true;
 		if (a.id > b.id) return false;
@@ -135,6 +140,8 @@ UserP *VisitP::get_user() {
 
 bool All::add_user(const User &user) {
 	auto e = new UserP(user);
+	e->age = (1502881955 - user.birth_date)
+		/ ( 365.25 * 24 * 60 * 60); // TODO
 	allp.tree_user_id.insert(*e);
 	return true; // TODO
 }
@@ -230,31 +237,37 @@ double All::get_avg(
 	boost::optional<uint8_t> to_age,
 	boost::optional<bool>    gender_is_male
 ) {
+	if (!from_date) from_date = { std::numeric_limits<time_t>::min() };
+	if (!to_date)   to_date   = { std::numeric_limits<time_t>::max() };
+
+	if (*from_date >= *to_date)
+		return 0;
+
 	Visit first;
 	first.location = id;
+	first.visited_at = *from_date;
 	first.id = 0;
 
 	Visit last;
 	last.location = id;
+	last.visited_at = *to_date;
 	last.id = 0xFFFFFFFFu;
 
 	auto it = allp.tree_visit_location.lower_bound(first);
 	if (it == allp.tree_visit_location.end())
-		return true;
+		return 0;
 
 	auto end = allp.tree_visit_location.upper_bound(last);
 
 	unsigned count = 0, sum = 0;
 	for (; it != end; it++) {
 		auto &visit = *it;
-		User *user = visit.get_user();
+		UserP *user = visit.get_user();
 		if (user == nullptr)
 			continue;
 
-		if (from_date      && visit.visited_at < *from_date ||
-		    to_date        && visit.visited_at > *to_date ||
-		    from_age       && visit.visited_at < *from_age ||
-		    to_age         && visit.visited_at > *to_age ||
+		if (from_age       && user->age <= *from_age ||
+		    to_age         && user->age >= *to_age   ||
 		    gender_is_male && user->gender_is_male != *gender_is_male)
 			continue;
 
