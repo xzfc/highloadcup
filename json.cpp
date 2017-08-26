@@ -5,8 +5,14 @@ namespace rapidjson { typedef ::std::size_t SizeType; }
 #include "rapidjson/reader.h"
 #include "rapidjson/filereadstream.h"
 
-#include <iostream>
+#include <boost/asio/io_service.hpp>
+#include <boost/bind.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/thread/thread.hpp>
+#include <iostream>
+#include <mutex>
+
+static std::mutex mut;
 
 #define $key(WHAT, STATE, BIT) \
 	if (!strcmp(str, WHAT)) { state = STATE; have |= 1 << BIT; return true; }
@@ -24,7 +30,7 @@ namespace rapidjson { typedef ::std::size_t SizeType; }
 #define $HANDLER_NAME    UserHandler
 #define $LOCAL_VAR       User user
 #define $TOPLEVEL_FIELD  "users"
-#define $ADD_NEW         All::add_user(user)
+#define $ADD_NEW         mut.lock(); All::add_user(user); mut.unlock()
 #define $KEY_NUMBER      6
 #define $KEY_HANDLER \
 	$key("id",         10, 0); \
@@ -51,7 +57,7 @@ namespace rapidjson { typedef ::std::size_t SizeType; }
 #define $HANDLER_NAME    LocationsHandler
 #define $LOCAL_VAR       Location location
 #define $TOPLEVEL_FIELD  "locations"
-#define $ADD_NEW         All::add_location(location)
+#define $ADD_NEW         mut.lock(); All::add_location(location); mut.unlock()
 #define $KEY_NUMBER      5
 #define $KEY_HANDLER \
 	$key("id",         10, 0); \
@@ -72,7 +78,7 @@ namespace rapidjson { typedef ::std::size_t SizeType; }
 #define $HANDLER_NAME    VisitsHandler
 #define $LOCAL_VAR       Visit visit
 #define $TOPLEVEL_FIELD  "visits"
-#define $ADD_NEW         All::add_visit(visit)
+#define $ADD_NEW         mut.lock(); All::add_visit(visit); mut.unlock()
 #define $KEY_NUMBER      5
 #define $KEY_HANDLER \
 	$key("id",         10, 0); \
@@ -100,27 +106,59 @@ bool starts_with(const T& input, const T& match) {
 	    std::equal(match.begin(), match.end(), input.begin());
 }
 
+struct ThreadPool {
+	typedef std::unique_ptr<boost::asio::io_service::work> asio_worker;
+	ThreadPool(size_t threads) :service(), working(new asio_worker::element_type(service)) {
+		for ( std::size_t i = 0; i < threads; ++i ) {
+			auto worker = boost::bind(&boost::asio::io_service::run, &(this->service));
+			g.add_thread(new boost::thread(worker));
+		}
+	}
+
+	template<class F>
+		void enqueue(F f){
+			service.post(f);
+		}
+
+	~ThreadPool() {
+		working.reset(); //allow run() to exit
+		g.join_all();
+		service.stop();
+	}
+
+	private:
+	boost::asio::io_service service; //< the io_service we are wrapping
+	asio_worker working;
+	boost::thread_group g; //< need to keep track of threads so we can join them
+};
+
 void parse(const char *dir) {
-	char buffer[2048];
-	rapidjson::Reader reader;
-	FILE *fp;
+	ThreadPool pool(4);
 
 	for (auto &it: boost::filesystem::directory_iterator(dir)) {
-		auto fname = it.path().filename().string();
-		fp = fopen(it.path().string().c_str(), "r");
-		rapidjson::FileReadStream stream(fp, buffer, sizeof buffer);
-		if (starts_with(fname, "users_")) {
-			UserHandler handler;
-			reader.Parse(stream, handler);
-		}
-		if (starts_with(fname, "locations_")) {
-			LocationsHandler handler;
-			reader.Parse(stream, handler);
-		}
-		if (starts_with(fname, "visits_")) {
-			VisitsHandler handler;
-			reader.Parse(stream, handler);
-		}
-		fclose(fp);
+		const auto path = it.path();
+		pool.enqueue([path] {
+			auto fname = path.filename().string();
+			std::cout << fname << "\n";
+			FILE *fp;
+			char buffer[2048];
+			rapidjson::Reader reader;
+
+			fp = fopen(path.string().c_str(), "r");
+			rapidjson::FileReadStream stream(fp, buffer, sizeof buffer);
+			if (starts_with(fname, "users_")) {
+				UserHandler handler;
+				reader.Parse(stream, handler);
+			}
+			if (starts_with(fname, "locations_")) {
+				LocationsHandler handler;
+				reader.Parse(stream, handler);
+			}
+			if (starts_with(fname, "visits_")) {
+				VisitsHandler handler;
+				reader.Parse(stream, handler);
+			}
+			fclose(fp);
+		});
 	}
 }

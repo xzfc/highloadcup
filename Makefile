@@ -1,5 +1,5 @@
-CXXFLAGS := -std=c++14 -O3 -MMD -MP -Wall -Wextra -Wno-parentheses
-LDFLAGS := -lboost_system -lboost_filesystem -pthread
+CXXFLAGS := -std=c++17 -O3 -MMD -MP -Wall -Wextra -Wno-parentheses
+LDFLAGS := -lboost_system -lboost_filesystem -lboost_thread -pthread
 SRC := main.cpp json.cpp all.cpp server.cpp
 OBJ := $(SRC:.cpp=.o)
 DEP := $(SRC:.cpp=.d)
