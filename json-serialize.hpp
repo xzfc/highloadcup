@@ -75,7 +75,7 @@ const char *json_serialize(const std::vector<VisitData> &data) {
 }
 
 const char *json_serialize(double val) {
-	static char buf[16];
+	static thread_local char buf[16];
 	sprintf(buf, "{\"avg\":%.5lf}", val);
 	return buf;
 }

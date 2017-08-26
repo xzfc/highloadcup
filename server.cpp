@@ -3,6 +3,7 @@
 #include "bench.hpp"
 
 #include <boost/lexical_cast.hpp>
+#include <shared_mutex>
 
 #include "simple-web-server/server_http.hpp"
 
@@ -18,62 +19,74 @@ constexpr auto $200 = SimpleWeb::StatusCode::success_ok;
 constexpr auto $400 = SimpleWeb::StatusCode::client_error_bad_request;
 constexpr auto $404 = SimpleWeb::StatusCode::client_error_not_found;
 
+static std::shared_mutex mut;
+    
 void start_server(uint16_t port) {
 	HttpServer server;
 	server.config.port = port;
+    server.config.thread_pool_size = 4;
 
 	server.resource["^/users/([0-9]+)$"]["GET"] =
-		[](ResponsePtr response, RequestPtr request) {
+		[&](ResponsePtr response, RequestPtr request) {
 			uint32_t id = atou32(request->path_match[1]);
-			if (User *user = All::get_user(id))
-				response->write($200, json_serialize(*user));
-			else
+            mut.lock_shared();
+			if (User *user = All::get_user(id)) {
+                auto ret = json_serialize(*user);
+                mut.unlock_shared();
+				response->write($200, ret);
+            } else {
+                mut.unlock_shared();
 				response->write($404, "Not found");
+            }
 		};
 
 	server.resource["^/locations/([0-9]+)$"]["GET"] =
 		[](ResponsePtr response, RequestPtr request) {
 			uint32_t id = atou32(request->path_match[1]);
-			if (Location *location = All::get_location(id))
-				response->write($200, json_serialize(*location));
-			else
+            mut.lock_shared();
+			if (Location *location = All::get_location(id)) {
+                auto ret = json_serialize(*location);
+                mut.unlock_shared();
+				response->write($200, ret);
+            } else {
+                mut.unlock_shared();
 				response->write($404, "Not found");
+            }
 		};
 
 	server.resource["^/visits/([0-9]+)$"]["GET"] =
 		[](ResponsePtr response, RequestPtr request) {
 			uint32_t id = atou32(request->path_match[1]);
-			if (Visit *visit = All::get_visit(id))
-				response->write($200, json_serialize(*visit));
-			else
+            mut.lock_shared();
+			if (Visit *visit = All::get_visit(id)) {
+                auto ret = json_serialize(*visit);
+                mut.unlock_shared();
+				response->write($200, ret);
+            } else {
+                mut.unlock_shared();
 				response->write($404, "Not found");
+            }
 		};
 
-	bench b0, b1, b2, b3, b4;
 	server.resource["^/users/([0-9]+)/visits$"]["GET"] =
 		[&](ResponsePtr response, RequestPtr request) {
-			auto bt = bench::now();
 			uint32_t id = atou32(request->path_match[1]);
-			b0.ok(bt);
 
-			bt = bench::now();
-			User *user = All::get_user(id);
-			if (user == nullptr) {
+            mut.lock_shared();
+			bool have_user = All::get_user(id) != nullptr;
+            mut.unlock_shared();
+			if (!have_user) {
 				response->write($404, "Not found");
 				return;
 			}
-			b1.ok(bt);
 
 			boost::optional<time_t> from_date;
 			boost::optional<time_t> to_date;
 			boost::optional<std::string> country;
 			boost::optional<uint32_t> to_distance;
 
-			bt = bench::now();
 			auto query = request->parse_query_string();
-			b2.ok(bt);
 
-			bt = bench::now();
 			try {
 				auto it = query.find("fromDate");
 				if (it != query.end())
@@ -94,24 +107,22 @@ void start_server(uint16_t port) {
 				response->write($400, "Bad param");
 				return;
 			}
-			b3.ok(bt);
 
+            mut.lock_shared();
 			static thread_local std::vector<VisitData> out;
-			bt = bench::now();
             All::get_visits(out, id, from_date, to_date, country, to_distance);
-			b4.ok(bt);
+            mut.unlock_shared();
 			response->write($200, json_serialize(out));
 		};
 
-	bench ba0, ba1, ba2, ba3, ba4;
 	server.resource["^/locations/([0-9]+)/avg$"]["GET"] = 
 		[&](ResponsePtr response, RequestPtr request) {
-			auto bt = bench::now();
 			uint32_t id = atou32(request->path_match[1]);
-			ba0.ok(bt);
 
-			Location *location = All::get_location(id);
-			if (location == nullptr) {
+            mut.lock_shared();
+			bool have_location = All::get_location(id) != nullptr;
+            mut.unlock_shared();
+			if (!have_location) {
 				response->write($404, "Not found");
 				return;
 			}
@@ -154,25 +165,24 @@ void start_server(uint16_t port) {
 				return;
 			}
 
-			bt = bench::now();
+            mut.lock_shared();
 			auto avg = All::get_avg(
 					id, from_date, to_date, from_age, to_age, gender_is_male);
-			ba1.ok(bt);
-			bt = bench::now();
+            mut.unlock_shared();
 			response->write($200, json_serialize(avg));
-			ba2.ok(bt);
 		};
 
 	server.resource["^/info$"]["GET"] = 
 		[&](ResponsePtr response, RequestPtr request) {
 			std::string resp;
+            /*
 			#define $(X) resp += #X ": " + X.str() + "\n"
 			$(b0); $(b1); $(b2); $(b3); $(b4);
 			$(ba0); $(ba1); $(ba2);
 			#undef $
+            */
 			response->write($200, resp);
 		};
-
 
 	server.default_resource["GET"] =
 		[](ResponsePtr response, RequestPtr) {
