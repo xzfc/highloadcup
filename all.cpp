@@ -6,8 +6,10 @@
 namespace bi = ::boost::intrusive;
 
 struct UserP : User {
+	UserP() {}
 	UserP(const User &user) : User(user) { }
 	bi::avl_set_member_hook<> hook_id;
+	bool enabled = false;
 };
 
 struct LocationP : Location {
@@ -105,6 +107,8 @@ typedef bi::avl_set<
 > VisitTreeUserVisited;
 
 struct AllP {
+	std::vector<UserP> user_buff;
+
 	UserTreeId            tree_user_id;
 	LocationTreeId        tree_location_id;
 	VisitTreeId           tree_visit_id;
@@ -113,10 +117,23 @@ struct AllP {
 	VisitTreeUserVisited  tree_visit_user_visited;
 
 	YearDiffer year_differ;
+
+	AllP() {
+		user_buff.resize(1000000);
+	}
 };
 
 static AllP allp;
 
+UserP *get_user(uint32_t id) {
+	if (id < allp.user_buff.size()) {
+		auto &e = allp.user_buff[id];
+		return e.enabled ? &e : nullptr;
+	} else {
+		auto f = allp.tree_user_id.find(id);
+		return f != allp.tree_user_id.end() ? &*f : nullptr;
+	}
+}
 
 LocationP *VisitP::get_location() {
 	if (location_ptr != nullptr)
@@ -131,17 +148,21 @@ LocationP *VisitP::get_location() {
 UserP *VisitP::get_user() {
 	if (user_ptr != nullptr)
 		return user_ptr;
-	auto f = allp.tree_user_id.find(user);
-	user_ptr = f != allp.tree_user_id.end() ? &*f : nullptr;
-	if (user_ptr == nullptr)
-		std::cout << "Wooo\n";
+	user_ptr = ::get_user(user);
 	return user_ptr;
 }
 
 
 bool All::add_user(const User &user) {
-	auto e = new UserP(user);
-	allp.tree_user_id.insert(*e);
+	if (user.id < allp.user_buff.size()) {
+		auto &e = allp.user_buff[user.id];
+		new (&e)UserP(user);
+		e.enabled = true;
+	} else {
+		auto e = new UserP(user);
+		e->enabled = true;
+		allp.tree_user_id.insert(*e);
+	}
 	return true; // TODO
 }
 
@@ -160,8 +181,7 @@ bool All::add_visit(const Visit &visit) {
 }
 
 User *All::get_user(uint32_t id) {
-	auto f = allp.tree_user_id.find(id);
-	return f != allp.tree_user_id.end() ? &*f : nullptr;
+	return ::get_user(id);
 }
 
 Location *All::get_location(uint32_t id) {
