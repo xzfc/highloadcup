@@ -41,7 +41,7 @@ struct VisitData {
 	std::string place;
 };
 
-struct All {
+namespace All {
 	bool add_user(const User &user);
 	bool add_location(const Location &location);
 	bool add_visit(const Visit &visit);
@@ -73,4 +73,5 @@ struct All {
 	);
 
 	void optimize();
+    void set_options(time_t now, bool full);
 };

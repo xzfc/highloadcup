@@ -1,4 +1,5 @@
 #include "all.hpp"
+#include "yearsdiff.hpp"
 #include <boost/intrusive/avl_set.hpp>
 #include <iostream>
 
@@ -7,8 +8,6 @@ namespace bi = ::boost::intrusive;
 struct UserP : User {
 	UserP(const User &user) : User(user) { }
 	bi::avl_set_member_hook<> hook_id;
-
-	uint8_t age;
 };
 
 struct LocationP : Location {
@@ -112,6 +111,8 @@ struct AllP {
 
 	VisitTreeLocation     tree_visit_location;
 	VisitTreeUserVisited  tree_visit_user_visited;
+
+	YearDiffer year_differ;
 };
 
 static AllP allp;
@@ -140,8 +141,6 @@ UserP *VisitP::get_user() {
 
 bool All::add_user(const User &user) {
 	auto e = new UserP(user);
-	e->age = (1502881955 - user.birth_date)
-		/ ( 365.25 * 24 * 60 * 60); // TODO
 	allp.tree_user_id.insert(*e);
 	return true; // TODO
 }
@@ -240,6 +239,15 @@ double All::get_avg(
 	if (!from_date) from_date = { std::numeric_limits<time_t>::min() };
 	if (!to_date)   to_date   = { std::numeric_limits<time_t>::max() };
 
+	time_t birth_from, birth_to;
+	birth_from = to_age
+		? allp.year_differ.jaja(*to_age)
+		: std::numeric_limits<time_t>::min();
+
+	birth_to = from_age
+		? allp.year_differ.jaja(*from_age)
+		: std::numeric_limits<time_t>::max();
+
 	if (*from_date >= *to_date)
 		return 0;
 
@@ -266,8 +274,8 @@ double All::get_avg(
 		if (user == nullptr)
 			continue;
 
-		if (from_age       && user->age <= *from_age ||
-		    to_age         && user->age >= *to_age   ||
+		if (user->birth_date <= birth_from ||
+		    user->birth_date >= birth_to   ||
 		    gender_is_male && user->gender_is_male != *gender_is_male)
 			continue;
 
@@ -285,4 +293,8 @@ void All::optimize() {
 		visit.get_location();
 		visit.get_user();
 	}
+}
+
+void All::set_options(time_t now, bool full) {
+	allp.year_differ.set_now(now);
 }

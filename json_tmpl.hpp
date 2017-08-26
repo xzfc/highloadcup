@@ -1,11 +1,10 @@
 struct $HANDLER_NAME : rapidjson::BaseReaderHandler<> {
-	All &all;
 	int state = 0;
 
 	$LOCAL_VAR;
 	uint8_t have;
 
-	$HANDLER_NAME(All &all) : all{all} { }
+	$HANDLER_NAME() { }
 
 	bool StartObject() {
 		switch (state) {

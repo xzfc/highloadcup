@@ -18,32 +18,32 @@ constexpr auto $200 = SimpleWeb::StatusCode::success_ok;
 constexpr auto $400 = SimpleWeb::StatusCode::client_error_bad_request;
 constexpr auto $404 = SimpleWeb::StatusCode::client_error_not_found;
 
-void start_server(All &all, uint16_t port) {
+void start_server(uint16_t port) {
 	HttpServer server;
 	server.config.port = port;
 
 	server.resource["^/users/([0-9]+)$"]["GET"] =
-		[&all](ResponsePtr response, RequestPtr request) {
+		[](ResponsePtr response, RequestPtr request) {
 			uint32_t id = atou32(request->path_match[1]);
-			if (User *user = all.get_user(id))
+			if (User *user = All::get_user(id))
 				response->write($200, json_serialize(*user));
 			else
 				response->write($404, "Not found");
 		};
 
 	server.resource["^/locations/([0-9]+)$"]["GET"] =
-		[&all](ResponsePtr response, RequestPtr request) {
+		[](ResponsePtr response, RequestPtr request) {
 			uint32_t id = atou32(request->path_match[1]);
-			if (Location *location = all.get_location(id))
+			if (Location *location = All::get_location(id))
 				response->write($200, json_serialize(*location));
 			else
 				response->write($404, "Not found");
 		};
 
 	server.resource["^/visits/([0-9]+)$"]["GET"] =
-		[&all](ResponsePtr response, RequestPtr request) {
+		[](ResponsePtr response, RequestPtr request) {
 			uint32_t id = atou32(request->path_match[1]);
-			if (Visit *visit = all.get_visit(id))
+			if (Visit *visit = All::get_visit(id))
 				response->write($200, json_serialize(*visit));
 			else
 				response->write($404, "Not found");
@@ -57,7 +57,7 @@ void start_server(All &all, uint16_t port) {
 			b0.ok(bt);
 
 			bt = bench::now();
-			User *user = all.get_user(id);
+			User *user = All::get_user(id);
 			if (user == nullptr) {
 				response->write($404, "Not found");
 				return;
@@ -98,7 +98,7 @@ void start_server(All &all, uint16_t port) {
 
 			static thread_local std::vector<VisitData> out;
 			bt = bench::now();
-			all.get_visits(out, id, from_date, to_date, country, to_distance);
+            All::get_visits(out, id, from_date, to_date, country, to_distance);
 			b4.ok(bt);
 			response->write($200, json_serialize(out));
 		};
@@ -109,6 +109,12 @@ void start_server(All &all, uint16_t port) {
 			auto bt = bench::now();
 			uint32_t id = atou32(request->path_match[1]);
 			ba0.ok(bt);
+
+			Location *location = All::get_location(id);
+			if (location == nullptr) {
+				response->write($404, "Not found");
+				return;
+			}
 
 			boost::optional<time_t>  from_date;
 			boost::optional<time_t>  to_date;
@@ -149,7 +155,7 @@ void start_server(All &all, uint16_t port) {
 			}
 
 			bt = bench::now();
-			auto avg = all.get_avg(
+			auto avg = All::get_avg(
 					id, from_date, to_date, from_age, to_age, gender_is_male);
 			ba1.ok(bt);
 			bt = bench::now();

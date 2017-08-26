@@ -24,7 +24,7 @@ namespace rapidjson { typedef ::std::size_t SizeType; }
 #define $HANDLER_NAME    UserHandler
 #define $LOCAL_VAR       User user
 #define $TOPLEVEL_FIELD  "users"
-#define $ADD_NEW         all.add_user(user)
+#define $ADD_NEW         All::add_user(user)
 #define $KEY_NUMBER      6
 #define $KEY_HANDLER \
 	$key("id",         10, 0); \
@@ -51,7 +51,7 @@ namespace rapidjson { typedef ::std::size_t SizeType; }
 #define $HANDLER_NAME    LocationsHandler
 #define $LOCAL_VAR       Location location
 #define $TOPLEVEL_FIELD  "locations"
-#define $ADD_NEW         all.add_location(location)
+#define $ADD_NEW         All::add_location(location)
 #define $KEY_NUMBER      5
 #define $KEY_HANDLER \
 	$key("id",         10, 0); \
@@ -72,7 +72,7 @@ namespace rapidjson { typedef ::std::size_t SizeType; }
 #define $HANDLER_NAME    VisitsHandler
 #define $LOCAL_VAR       Visit visit
 #define $TOPLEVEL_FIELD  "visits"
-#define $ADD_NEW         all.add_visit(visit)
+#define $ADD_NEW         All::add_visit(visit)
 #define $KEY_NUMBER      5
 #define $KEY_HANDLER \
 	$key("id",         10, 0); \
@@ -100,7 +100,7 @@ bool starts_with(const T& input, const T& match) {
 	    std::equal(match.begin(), match.end(), input.begin());
 }
 
-void parse(All &all, const char *dir) {
+void parse(const char *dir) {
 	char buffer[2048];
 	rapidjson::Reader reader;
 	FILE *fp;
@@ -110,18 +110,17 @@ void parse(All &all, const char *dir) {
 		fp = fopen(it.path().string().c_str(), "r");
 		rapidjson::FileReadStream stream(fp, buffer, sizeof buffer);
 		if (starts_with(fname, "users_")) {
-			UserHandler handler(all);
+			UserHandler handler;
 			reader.Parse(stream, handler);
 		}
 		if (starts_with(fname, "locations_")) {
-			LocationsHandler handler(all);
+			LocationsHandler handler;
 			reader.Parse(stream, handler);
 		}
 		if (starts_with(fname, "visits_")) {
-			VisitsHandler handler(all);
+			VisitsHandler handler;
 			reader.Parse(stream, handler);
 		}
 		fclose(fp);
 	}
-
 }
