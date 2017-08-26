@@ -14,19 +14,9 @@ static uint32_t atou32(const std::string &str) {
 	return atoll(str.c_str());
 }
 
-static void do_resp(
-		HttpServer::Response &response,
-		int code,
-		const std::string &data)
-{
-	switch (code) {
-	case 200: response << "HTTP/1.1 200 OK\r\n";                    break;
-	case 400: response << "HTTP/1.1 400 Bad Request\r\n";           break;
-	case 404: response << "HTTP/1.1 404 Not Found\r\n";             break;
-	case 500: response << "HTTP/1.1 500 Internal Server Error\r\n"; break;
-	}
-	response << "Content-Length: " << data.length() << "\r\n\r\n" << data;
-}
+constexpr auto $200 = SimpleWeb::StatusCode::success_ok;
+constexpr auto $400 = SimpleWeb::StatusCode::client_error_bad_request;
+constexpr auto $404 = SimpleWeb::StatusCode::client_error_not_found;
 
 void start_server(All &all, uint16_t port) {
 	HttpServer server;
@@ -36,27 +26,27 @@ void start_server(All &all, uint16_t port) {
 		[&all](ResponsePtr response, RequestPtr request) {
 			uint32_t id = atou32(request->path_match[1]);
 			if (User *user = all.get_user(id))
-				do_resp(*response, 200, json_serialize(*user));
+				response->write($200, json_serialize(*user));
 			else
-				do_resp(*response, 404, "Not found");
+				response->write($404, "Not found");
 		};
 
 	server.resource["^/locations/([0-9]+)$"]["GET"] =
 		[&all](ResponsePtr response, RequestPtr request) {
 			uint32_t id = atou32(request->path_match[1]);
 			if (Location *location = all.get_location(id))
-				do_resp(*response, 200, json_serialize(*location));
+				response->write($200, json_serialize(*location));
 			else
-				do_resp(*response, 404, "Not found");
+				response->write($404, "Not found");
 		};
 
 	server.resource["^/visits/([0-9]+)$"]["GET"] =
 		[&all](ResponsePtr response, RequestPtr request) {
 			uint32_t id = atou32(request->path_match[1]);
 			if (Visit *visit = all.get_visit(id))
-				do_resp(*response, 200, json_serialize(*visit));
+				response->write($200, json_serialize(*visit));
 			else
-				do_resp(*response, 404, "Not found");
+				response->write($404, "Not found");
 		};
 
 	bench b0, b1, b2, b3, b4;
@@ -69,7 +59,7 @@ void start_server(All &all, uint16_t port) {
 			bt = bench::now();
 			User *user = all.get_user(id);
 			if (user == nullptr) {
-				do_resp(*response, 404, "Not found");
+				response->write($404, "Not found");
 				return;
 			}
 			b1.ok(bt);
@@ -101,7 +91,7 @@ void start_server(All &all, uint16_t port) {
 				if (it != query.end())
 					to_distance = boost::lexical_cast<time_t>(it->second);
 			} catch (boost::bad_lexical_cast) {
-				do_resp(*response, 400, "Bad param");
+				response->write($400, "Bad param");
 				return;
 			}
 			b3.ok(bt);
@@ -110,7 +100,7 @@ void start_server(All &all, uint16_t port) {
 			bt = bench::now();
 			all.get_visits(out, id, from_date, to_date, country, to_distance);
 			b4.ok(bt);
-			do_resp(*response, 200, json_serialize(out));
+			response->write($200, json_serialize(out));
 		};
 
 	bench ba0, ba1, ba2, ba3, ba4;
@@ -154,7 +144,7 @@ void start_server(All &all, uint16_t port) {
 						throw boost::bad_lexical_cast();
 				}
 			} catch (boost::bad_lexical_cast) {
-				do_resp(*response, 400, "Bad param");
+				response->write($400, "Bad param");
 				return;
 			}
 
@@ -163,7 +153,7 @@ void start_server(All &all, uint16_t port) {
 					id, from_date, to_date, from_age, to_age, gender_is_male);
 			ba1.ok(bt);
 			bt = bench::now();
-			do_resp(*response, 200, json_serialize(avg));
+			response->write($200, json_serialize(avg));
 			ba2.ok(bt);
 		};
 
@@ -174,13 +164,13 @@ void start_server(All &all, uint16_t port) {
 			$(b0); $(b1); $(b2); $(b3); $(b4);
 			$(ba0); $(ba1); $(ba2);
 			#undef $
-			do_resp(*response, 200, resp);
+			response->write($200, resp);
 		};
 
 
 	server.default_resource["GET"] =
 		[](ResponsePtr response, RequestPtr) {
-			do_resp(*response, 404, "");
+			response->write($404, "Not found");
 		};
 
 	std::cout << "Started\n";

@@ -74,7 +74,7 @@ namespace SimpleWeb {
           *this << field.first << ": " << field.second << "\r\n";
         }
         if(!content_length_written && !chunked_transfer_encoding && !close_connection_after_response)
-          *this << "Content-Length: " << size << "\r\n\r\n";
+          *this << "Content-Length: " << size << "\r\nConnection: Keep-Alive" "\r\n\r\n";
         else
           *this << "\r\n";
       }
