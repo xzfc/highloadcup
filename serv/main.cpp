@@ -2,6 +2,7 @@
 #include "json.hpp"
 #include <iostream>
 #include <fstream>
+#include <iomanip>
 
 void start_server(uint16_t port);
 
@@ -13,6 +14,12 @@ void load_options(const std::string &path) {
 	All::set_options(now, full);
 }
 
+void put_log(const char *text) {
+	std::string s;
+	std::ifstream("/proc/uptime") >> s;
+	std::cout << "[" << std::setw(11) << s << "] " << text << std::endl;
+}
+
 int main(int argc, char **argv) {
 	if (argc != 3) {
 		std::cerr << "Usage: " << argv[0] << " PATH PORT\n";
@@ -20,7 +27,9 @@ int main(int argc, char **argv) {
 	}
 
 	parse(argv[1]);
+	put_log("parsed");
 	load_options(argv[1] + std::string("/options.txt"));
 	All::optimize();
+	put_log("optimized");
 	start_server(atoi(argv[2]));
 }

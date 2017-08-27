@@ -125,7 +125,7 @@ LocationP *VisitP::get_location() {
 	auto f = allp.tree_location_id.find(location);
 	location_ptr = f != allp.tree_location_id.end() ? &*f : nullptr;
 	if (location_ptr == nullptr)
-		std::cout << "Wooo\n";
+		std::cout << "Wooo" << std::endl;
 	return location_ptr;
 }
 
@@ -135,7 +135,7 @@ UserP *VisitP::get_user() {
 	auto f = allp.tree_user_id.find(user);
 	user_ptr = f != allp.tree_user_id.end() ? &*f : nullptr;
 	if (user_ptr == nullptr)
-		std::cout << "Wooo\n";
+		std::cout << "Hooo" << std::endl;
 	return user_ptr;
 }
 

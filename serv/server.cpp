@@ -307,6 +307,5 @@ void start_server(uint16_t port) {
 			response->write($404, "Not found");
 		};
 
-	std::cout << "Started\n";
 	server.start();
 }

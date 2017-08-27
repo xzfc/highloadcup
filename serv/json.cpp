@@ -26,13 +26,7 @@ extern std::shared_mutex mut; // server.cpp
 	memcpy(WHAT, str, length); \
 	WHAT[length] = 0; \
 	break;
-#define $err do { \
-	std::cerr << __FILE__ << ":" << __LINE__ << ": json error\n"; \
-	return false; \
-	} while (0)
-#define $err_(W) \
-	std::cerr << __FILE__ << ":" << __LINE__ << ": " << W << "\n"
-
+#define $err return false
 
 #define $HANDLER_NAME    UserHandler
 #define $LOCAL_VAR       User user
