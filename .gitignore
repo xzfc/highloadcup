@@ -1,3 +1,4 @@
-/main
-/*.d
-/*.o
+/serv/main
+/serv/*.d
+/serv/*.o
+/docker-build
