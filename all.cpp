@@ -6,15 +6,17 @@
 
 namespace bi = ::boost::intrusive;
 
-struct UserP : User {
-	UserP(const User &user) : User(user) { }
-	bi::avl_set_member_hook<> hook_id;
+struct KeyId {
+	typedef uint32_t type;
+	template <class T>
+	uint32_t operator()(const T &a) const {
+		return a.id;
+	}
 };
 
-struct LocationP : Location {
-	LocationP(const Location &location) : Location(location) {}
-	bi::avl_set_member_hook<> hook_id;
-};
+struct UserP;
+struct LocationP;
+struct VisitP;
 
 struct VisitP : Visit {
 	VisitP(const Visit &visit) : Visit(visit) {}
@@ -25,14 +27,6 @@ struct VisitP : Visit {
 
 	UserP *user_ptr = 0;
 	UserP *get_user();
-};
-
-struct KeyId {
-	typedef uint32_t type;
-	template <class T>
-	uint32_t operator()(const T &a) const {
-		return a.id;
-	}
 };
 
 struct CompareVisitUserVisited {
@@ -74,18 +68,6 @@ struct CompareVisitLocation {
 };
 
 typedef bi::avl_set<
-	UserP,
-	bi::member_hook<UserP, bi::avl_set_member_hook<>, &UserP::hook_id>,
-	bi::key_of_value<KeyId>
-> UserTreeId;
-
-typedef bi::avl_set<
-	LocationP,
-	bi::member_hook<LocationP, bi::avl_set_member_hook<>, &LocationP::hook_id>,
-	bi::key_of_value<KeyId>
-> LocationTreeId;
-
-typedef bi::avl_set<
 	VisitP,
 	bi::member_hook<VisitP, bi::avl_set_member_hook<>, &VisitP::hook_id>,
 	bi::key_of_value<KeyId>
@@ -104,6 +86,33 @@ typedef bi::avl_set<
 	bi::key_of_value<CompareVisitUserVisited>,
 	bi::compare<CompareVisitUserVisited>
 > VisitTreeUserVisited;
+
+struct UserP : User {
+	UserP(const User &user) : User(user) { }
+	bi::avl_set_member_hook<> hook_id;
+
+	VisitTreeLocation visits;
+};
+
+struct LocationP : Location {
+	LocationP(const Location &location) : Location(location) {}
+	bi::avl_set_member_hook<> hook_id;
+
+	VisitTreeUserVisited visits;
+};
+
+typedef bi::avl_set<
+	UserP,
+	bi::member_hook<UserP, bi::avl_set_member_hook<>, &UserP::hook_id>,
+	bi::key_of_value<KeyId>
+> UserTreeId;
+
+typedef bi::avl_set<
+	LocationP,
+	bi::member_hook<LocationP, bi::avl_set_member_hook<>, &LocationP::hook_id>,
+	bi::key_of_value<KeyId>
+> LocationTreeId;
+
 
 struct AllP {
 	UserTreeId            tree_user_id;
@@ -164,8 +173,14 @@ bool All::add_visit(const Visit &visit) {
 		return false;
 	auto e = new VisitP(visit);
 	allp.tree_visit_id.insert(it, *e);
-	allp.tree_visit_location.insert(*e);
-	allp.tree_visit_user_visited.insert(*e);
+	auto loc = e->get_location();
+	if (loc) {
+		loc->visits.insert(*e);
+	} else {
+		std::cout << ":<" << std::endl;
+	}
+	// allp.tree_visit_location.insert(*e);
+	// allp.tree_visit_user_visited.insert(*e);
 	return true;
 }
 
@@ -203,8 +218,16 @@ bool All::update_visit(const Visit &visit, uint8_t mask) {
 	if (mask & (1<<2 | 1<<3))
 		allp.tree_visit_user_visited.erase(*it);
 
-	if (mask & (1<<1)) { it->location   = visit.location; it->location_ptr = 0; }
-	if (mask & (1<<2)) { it->user       = visit.user; it->user_ptr = 0; }
+	if (mask & (1<<1)) { it->location   = visit.location; it->location_ptr = 0;
+		//auto loc = it->get_location();
+		//if (loc) {
+		//}
+	}
+	if (mask & (1<<2)) { it->user       = visit.user; it->user_ptr = 0;
+		if (!All::get_user(visit.user)) {
+			std::cout << "Can't get user!\n";
+		}
+	}
 	if (mask & (1<<3)) it->visited_at = visit.visited_at;
 	if (mask & (1<<4)) it->mark       = visit.mark;
 
@@ -347,6 +370,7 @@ double All::get_avg(
 }
 
 void All::optimize() {
+	abort();
 	for (auto &visit : allp.tree_visit_id) {
 		visit.get_location();
 		visit.get_user();

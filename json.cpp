@@ -133,6 +133,12 @@ void parse(const char *dir) {
 			LocationsHandler handler(false);
 			reader.Parse(stream, handler);
 		}
+		fclose(fp);
+	}
+	for (auto &it: boost::filesystem::directory_iterator(dir)) {
+		auto fname = it.path().filename().string();
+		fp = fopen(it.path().string().c_str(), "r");
+		rapidjson::FileReadStream stream(fp, buffer, sizeof buffer);
 		if (starts_with(fname, "visits_")) {
 			VisitsHandler handler(false);
 			reader.Parse(stream, handler);
