@@ -1,5 +1,6 @@
 #include "all.hpp"
 #include "yearsdiff.hpp"
+#include <cstring>
 #include <boost/intrusive/avl_set.hpp>
 #include <iostream>
 
@@ -140,23 +141,80 @@ UserP *VisitP::get_user() {
 
 
 bool All::add_user(const User &user) {
+	auto it = allp.tree_user_id.find(user.id);
+	if (it != allp.tree_user_id.end())
+		return false;
 	auto e = new UserP(user);
-	allp.tree_user_id.insert(*e);
-	return true; // TODO
+	allp.tree_user_id.insert(it, *e);
+	return true;
 }
 
 bool All::add_location(const Location &location) {
+	auto it = allp.tree_location_id.find(location.id);
+	if (it != allp.tree_location_id.end())
+		return false;
 	auto e = new LocationP(location);
-	allp.tree_location_id.insert(*e);
-	return true; // TODO
+	allp.tree_location_id.insert(it, *e);
+	return true;
 }
 
 bool All::add_visit(const Visit &visit) {
+	auto it = allp.tree_visit_id.find(visit.id);
+	if (it != allp.tree_visit_id.end())
+		return false;
 	auto e = new VisitP(visit);
-	allp.tree_visit_id.insert(*e);
+	allp.tree_visit_id.insert(it, *e);
 	allp.tree_visit_location.insert(*e);
 	allp.tree_visit_user_visited.insert(*e);
-	return true; // TODO
+	return true;
+}
+
+bool All::update_user(const User &user, uint8_t mask) {
+	auto it = allp.tree_user_id.find(user.id);
+	if (it == allp.tree_user_id.end())
+		return false;
+	if (mask & (1<<1)) std::strcpy(it->email,           user.email);
+	if (mask & (1<<2)) std::strcpy(it->first_name,      user.first_name);
+	if (mask & (1<<3)) std::strcpy(it->last_name,       user.last_name);
+	if (mask & (1<<4))             it->gender_is_male = user.gender_is_male;
+	if (mask & (1<<5))             it->birth_date     = user.birth_date;
+	return true;
+}
+
+bool All::update_location(const Location &location, uint8_t mask) {
+	auto it = allp.tree_location_id.find(location.id);
+	if (it == allp.tree_location_id.end())
+		return false;
+	if (mask & (1<<1))             it->place    = location.place;
+	if (mask & (1<<2)) std::strcpy(it->country,   location.country);
+	if (mask & (1<<3)) std::strcpy(it->city,      location.city);
+	if (mask & (1<<4))             it->distance = location.distance;
+	return true;
+}
+
+bool All::update_visit(const Visit &visit, uint8_t mask) {
+	auto it = allp.tree_visit_id.find(visit.id);
+	if (it == allp.tree_visit_id.end())
+		return false;
+
+	if (mask & (1<<1 | 1<<3))
+		allp.tree_visit_location.erase(*it);
+
+	if (mask & (1<<2 | 1<<3))
+		allp.tree_visit_user_visited.erase(*it);
+
+	if (mask & (1<<1)) { it->location   = visit.location; it->location_ptr = 0; }
+	if (mask & (1<<2)) { it->user       = visit.user; it->user_ptr = 0; }
+	if (mask & (1<<3)) it->visited_at = visit.visited_at;
+	if (mask & (1<<4)) it->mark       = visit.mark;
+
+	if (mask & (1<<1 | 1<<3))
+		allp.tree_visit_location.insert(*it);
+
+	if (mask & (1<<2 | 1<<3))
+		allp.tree_visit_user_visited.insert(*it);
+
+	return true;
 }
 
 User *All::get_user(uint32_t id) {

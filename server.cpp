@@ -1,6 +1,7 @@
 #include "all.hpp"
-#include "json-serialize.hpp"
 #include "bench.hpp"
+#include "json-serialize.hpp"
+#include "json.hpp"
 
 #include <boost/lexical_cast.hpp>
 #include <shared_mutex>
@@ -19,8 +20,8 @@ constexpr auto $200 = SimpleWeb::StatusCode::success_ok;
 constexpr auto $400 = SimpleWeb::StatusCode::client_error_bad_request;
 constexpr auto $404 = SimpleWeb::StatusCode::client_error_not_found;
 
-static std::shared_mutex mut;
-    
+std::shared_mutex mut;
+
 void start_server(uint16_t port) {
 	HttpServer server;
 	server.config.port = port;
@@ -182,6 +183,123 @@ void start_server(uint16_t port) {
 			#undef $
             */
 			response->write($200, resp);
+		};
+
+	server.resource["^/users/new$"]["POST"] =
+		[&](ResponsePtr response, RequestPtr request) {
+			auto content = request->content.string();
+			User user;
+			uint8_t mask;
+			if (!parse_user(content, user, mask) || mask != (1<<6)-1) {
+				response->write($400, "Bad param");
+				return;
+			}
+			mut.lock();
+			bool ok = All::add_user(user);
+			mut.unlock();
+			if (ok)
+				response->write($200, "{}");
+			else
+				response->write($400, "Bad param");
+		};
+
+	server.resource["^/locations/new$"]["POST"] =
+		[&](ResponsePtr response, RequestPtr request) {
+			auto content = request->content.string();
+			Location location;
+			uint8_t mask;
+			if (!parse_location(content, location, mask) || mask != (1<<5)-1) {
+				response->write($400, "Bad param");
+				return;
+			}
+			mut.lock();
+			bool ok = All::add_location(location);
+			mut.unlock();
+			if (ok)
+				response->write($200, "{}");
+			else
+				response->write($400, "Bad param");
+		};
+
+	server.resource["^/visits/new$"]["POST"] =
+		[&](ResponsePtr response, RequestPtr request) {
+			auto content = request->content.string();
+			Visit visit;
+			uint8_t mask;
+			if (!parse_visit(content, visit, mask) || mask != (1<<5)-1) {
+				response->write($400, "Bad param");
+				return;
+			}
+			mut.lock();
+			bool ok = All::add_visit(visit);
+			mut.unlock();
+			if (ok)
+				response->write($200, "{}");
+			else
+				response->write($400, "Bad param");
+		};
+
+	server.resource["^/users/([0-9]+)$"]["POST"] =
+		[&](ResponsePtr response, RequestPtr request) {
+			uint32_t id = atou32(request->path_match[1]);
+
+			auto content = request->content.string();
+			User user;
+			uint8_t mask;
+			if (!parse_user(content, user, mask) || mask & 1) {
+				response->write($400, "Bad param");
+				return;
+			}
+			user.id = id;
+			mut.lock();
+			bool ok = All::update_user(user, mask);
+			mut.unlock();
+			if (ok)
+				response->write($200, "{}");
+			else
+				response->write($404, "Not found");
+		};
+
+	server.resource["^/locations/([0-9]+)$"]["POST"] =
+		[&](ResponsePtr response, RequestPtr request) {
+			uint32_t id = atou32(request->path_match[1]);
+
+			auto content = request->content.string();
+			Location location;
+			uint8_t mask;
+			if (!parse_location(content, location, mask) || mask & 1) {
+				response->write($400, "Bad param");
+				return;
+			}
+			location.id = id;
+			mut.lock();
+			bool ok = All::update_location(location, mask);
+			mut.unlock();
+			if (ok)
+				response->write($200, "{}");
+			else
+				response->write($404, "Not found");
+		};
+
+	server.resource["^/visits/([0-9]+)$"]["POST"] =
+		[&](ResponsePtr response, RequestPtr request) {
+			uint32_t id = atou32(request->path_match[1]);
+
+			auto content = request->content.string();
+			Visit visit;
+			uint8_t mask;
+			if (!parse_visit(content, visit, mask) || mask & 1) {
+				response->write($400, "Bad param");
+				return;
+			}
+			visit.id = id;
+			mut.lock();
+			bool ok = All::update_visit(visit, mask);
+			mut.unlock();
+			if (ok)
+				response->write($200, "{}");
+			else
+				response->write($404, "Not found");
 		};
 
 	server.default_resource["GET"] =

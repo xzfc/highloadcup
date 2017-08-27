@@ -1,8 +1,8 @@
 #include "all.hpp"
+#include "json.hpp"
 #include <iostream>
 #include <fstream>
 
-void parse(const char *dir);
 void start_server(uint16_t port);
 
 void load_options(const std::string &path) {

@@ -46,9 +46,9 @@ namespace All {
 	bool add_location(const Location &location);
 	bool add_visit(const Visit &visit);
 
-	bool update_user(...); // TODO
-	bool update_location(...); // TODO
-	bool update_visit(...); // TODO
+	bool update_user(const User &, uint8_t mask);
+	bool update_location(const Location &, uint8_t mask);
+	bool update_visit(const Visit &, uint8_t mask);
 
 	User *get_user(uint32_t id);
 	Location *get_location(uint32_t id);
