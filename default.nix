@@ -8,6 +8,8 @@ in rec {
     name = "my-project";
     nativeBuildInputs = [
       boost
+      nixpkgs.gdb
+      nixpkgs.git
     ];
   };
 }
