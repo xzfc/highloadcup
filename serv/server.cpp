@@ -1,10 +1,12 @@
 #include "all.hpp"
+#include <algorithm>
 #include "bench.hpp"
 #include "json-serialize.hpp"
 #include "json.hpp"
 
 #include <boost/lexical_cast.hpp>
 #include <shared_mutex>
+#include <algorithm>
 
 #include "simple-web-server/server_http.hpp"
 
@@ -183,6 +185,45 @@ void start_server(uint16_t port) {
 			#undef $
             */
 			response->write($200, resp);
+		};
+
+	std::vector<int> ids;
+	for (int i = 0; i < 500000 / 10; i++)
+		ids.push_back(i);
+	std::random_shuffle(ids.begin(), ids.end());
+
+	server.resource["^/bench/avg$"]["GET"] =
+		[&](ResponsePtr response, RequestPtr request) {
+			auto t0 = std::chrono::steady_clock::now();
+			double res = 0;
+			for (auto id : ids)
+				res += All::get_avg(id, {}, {}, {}, {}, {});
+			auto t1 = std::chrono::steady_clock::now();
+			auto ms = std::chrono::duration_cast<std::chrono::microseconds>(t1-t0).count();
+			std::stringstream ooo;
+			ooo << "count = " << ids.size() << "\n"
+			       "res   = " << res << "\n"
+			       "ms    = " << ms << "\n"
+			       "ms/req= " << (ms*1.0/ids.size()) << "\n";
+			response->write($200, ooo);
+		};
+
+	server.resource["^/bench/visits$"]["GET"] =
+		[&](ResponsePtr response, RequestPtr request) {
+			auto t0 = std::chrono::steady_clock::now();
+			double res = 0;
+			for (auto id : ids) {
+				static thread_local std::vector<VisitData> out;
+				All::get_visits(out, id, {}, {}, {}, {});
+			}
+			auto t1 = std::chrono::steady_clock::now();
+			auto ms = std::chrono::duration_cast<std::chrono::microseconds>(t1-t0).count();
+			std::stringstream ooo;
+			ooo << "count = " << ids.size() << "\n"
+			       "res   = " << res << "\n"
+			       "ms    = " << ms << "\n"
+			       "ms/req= " << (ms*1.0/ids.size()) << "\n";
+			response->write($200, ooo);
 		};
 
 	server.resource["^/users/new$"]["POST"] =

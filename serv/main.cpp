@@ -26,6 +26,7 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
+	put_log("started");
 	parse(argv[1]);
 	put_log("parsed");
 	load_options(argv[1] + std::string("/options.txt"));
