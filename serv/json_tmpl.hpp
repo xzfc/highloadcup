@@ -1,11 +1,12 @@
-struct $HANDLER_NAME : rapidjson::BaseReaderHandler<> {
+template <>
+struct JsonHandler<$DATA> : rapidjson::BaseReaderHandler<> {
 	int state = 0;
 	bool single;
 
-	$LOCAL_VAR;
-	uint8_t have;
+	$DATA data;
+	$DATA::Mask mask;
 
-	$HANDLER_NAME(bool single)
+	JsonHandler(bool single)
 		: state(single ? 3 : 0), single(single)
 		{}
 
@@ -14,7 +15,7 @@ struct $HANDLER_NAME : rapidjson::BaseReaderHandler<> {
 	bool StartObject() {
 		switch (state) {
 		case 0: state = 1; return true;
-		case 3: state = 4; have = 0; return true;
+		case 3: state = 4; mask.reset(); return true;
 		default: $err;
 		}
 	}
@@ -26,10 +27,10 @@ struct $HANDLER_NAME : rapidjson::BaseReaderHandler<> {
 				state = 3;
 				return true;
 			} else {
-				if (have != (1<<$KEY_NUMBER) - 1) $err;
+				if (!mask.is_full()) $err;
 				state = 3;
 				mut.lock();
-				$ADD_NEW;
+				All::add(data);
 				mut.unlock();
 				return true;
 			}
@@ -87,12 +88,9 @@ struct $HANDLER_NAME : rapidjson::BaseReaderHandler<> {
 	}
 };
 
-#undef $HANDLER_NAME
-#undef $LOCAL_VAR
+#undef $DATA
 #undef $TOPLEVEL_FIELD
 #undef $ADD_NEW
-#undef $UPDATE
-#undef $KEY_NUMBER
 #undef $KEY_HANDLER
 #undef $INT_HANDLER
 #undef $STRING_HANDLER

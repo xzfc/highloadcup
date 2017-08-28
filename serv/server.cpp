@@ -24,60 +24,86 @@ constexpr auto $404 = SimpleWeb::StatusCode::client_error_not_found;
 
 std::shared_mutex mut;
 
+template <class Data>
+static void server_get(ResponsePtr response, RequestPtr request)
+{
+	uint32_t id = atou32(request->path_match[1]);
+	mut.lock_shared();
+	if (Data *data = All::get<Data>(id)) {
+		auto ret = json_serialize(*data);
+		mut.unlock_shared();
+		response->write($200, ret);
+	} else {
+		mut.unlock_shared();
+		response->write($404, "Not found");
+	}
+}
+
+template <class Data>
+static void server_new(ResponsePtr response, RequestPtr request)
+{
+	auto content = request->content.string();
+	Data data;
+	typename Data::Mask mask;
+	if (!json_parse_single(content, data, mask) || !mask.is_full()) {
+		response->write($400, "Bad param");
+		return;
+	}
+	mut.lock();
+	bool ok = All::add(data);
+	mut.unlock();
+	if (ok)
+		response->write($200, "{}");
+	else
+		response->write($400, "Bad param");
+}
+
+template <class Data>
+static void server_update(ResponsePtr response, RequestPtr request)
+{
+	uint32_t id = atou32(request->path_match[1]);
+
+	auto content = request->content.string();
+	Data data;
+	typename Data::Mask mask;
+	if (!json_parse_single(content, data, mask) || mask.id) {
+		response->write($400, "Bad param");
+		return;
+	}
+	data.id = id;
+	mut.lock();
+	bool ok = All::update(data, mask);
+	mut.unlock();
+	if (ok)
+		response->write($200, "{}");
+	else
+		response->write($404, "Not found");
+}
+
 void start_server(uint16_t port) {
 	HttpServer server;
 	server.config.port = port;
-    server.config.thread_pool_size = 4;
+	server.config.thread_pool_size = 4;
 
-	server.resource["^/users/([0-9]+)$"]["GET"] =
-		[&](ResponsePtr response, RequestPtr request) {
-			uint32_t id = atou32(request->path_match[1]);
-            mut.lock_shared();
-			if (User *user = All::get_user(id)) {
-                auto ret = json_serialize(*user);
-                mut.unlock_shared();
-				response->write($200, ret);
-            } else {
-                mut.unlock_shared();
-				response->write($404, "Not found");
-            }
-		};
+	server.resource["^/users/([0-9]+)$"    ]["GET"] = server_get<User>;
+	server.resource["^/locations/([0-9]+)$"]["GET"] = server_get<Loct>;
+	server.resource["^/visits/([0-9]+)$"   ]["GET"] = server_get<Vist>;
 
-	server.resource["^/locations/([0-9]+)$"]["GET"] =
-		[](ResponsePtr response, RequestPtr request) {
-			uint32_t id = atou32(request->path_match[1]);
-            mut.lock_shared();
-			if (Location *location = All::get_location(id)) {
-                auto ret = json_serialize(*location);
-                mut.unlock_shared();
-				response->write($200, ret);
-            } else {
-                mut.unlock_shared();
-				response->write($404, "Not found");
-            }
-		};
+	server.resource["^/users/new$"    ]["POST"] = server_new<User>;
+	server.resource["^/locations/new$"]["POST"] = server_new<Loct>;
+	server.resource["^/visits/new$"   ]["POST"] = server_new<Vist>;
 
-	server.resource["^/visits/([0-9]+)$"]["GET"] =
-		[](ResponsePtr response, RequestPtr request) {
-			uint32_t id = atou32(request->path_match[1]);
-            mut.lock_shared();
-			if (Visit *visit = All::get_visit(id)) {
-                auto ret = json_serialize(*visit);
-                mut.unlock_shared();
-				response->write($200, ret);
-            } else {
-                mut.unlock_shared();
-				response->write($404, "Not found");
-            }
-		};
+	server.resource["^/users/([0-9]+)$"    ]["POST"] = server_update<User>;
+	server.resource["^/locations/([0-9]+)$"]["POST"] = server_update<Loct>;
+	server.resource["^/visits/([0-9]+)$"   ]["POST"] = server_update<Vist>;
 
 	server.resource["^/users/([0-9]+)/visits$"]["GET"] =
 		[&](ResponsePtr response, RequestPtr request) {
 			uint32_t id = atou32(request->path_match[1]);
 
-            mut.lock_shared();
-			bool have_user = All::get_user(id) != nullptr;
-            mut.unlock_shared();
+			mut.lock_shared();
+			bool have_user = All::get<User>(id) != nullptr;
+			mut.unlock_shared();
 			if (!have_user) {
 				response->write($404, "Not found");
 				return;
@@ -111,10 +137,10 @@ void start_server(uint16_t port) {
 				return;
 			}
 
-            mut.lock_shared();
-			static thread_local std::vector<VisitData> out;
-            All::get_visits(out, id, from_date, to_date, country, to_distance);
-            mut.unlock_shared();
+			mut.lock_shared();
+			static thread_local std::vector<VistData> out;
+			All::get_vists(out, id, from_date, to_date, country, to_distance);
+			mut.unlock_shared();
 			response->write($200, json_serialize(out));
 		};
 
@@ -122,10 +148,10 @@ void start_server(uint16_t port) {
 		[&](ResponsePtr response, RequestPtr request) {
 			uint32_t id = atou32(request->path_match[1]);
 
-            mut.lock_shared();
-			bool have_location = All::get_location(id) != nullptr;
-            mut.unlock_shared();
-			if (!have_location) {
+			mut.lock_shared();
+			bool have_loct = All::get_loct(id) != nullptr;
+			mut.unlock_shared();
+			if (!have_loct) {
 				response->write($404, "Not found");
 				return;
 			}
@@ -168,23 +194,11 @@ void start_server(uint16_t port) {
 				return;
 			}
 
-            mut.lock_shared();
+			mut.lock_shared();
 			auto avg = All::get_avg(
 					id, from_date, to_date, from_age, to_age, gender_is_male);
-            mut.unlock_shared();
+			mut.unlock_shared();
 			response->write($200, json_serialize(avg));
-		};
-
-	server.resource["^/info$"]["GET"] = 
-		[&](ResponsePtr response, RequestPtr request) {
-			std::string resp;
-            /*
-			#define $(X) resp += #X ": " + X.str() + "\n"
-			$(b0); $(b1); $(b2); $(b3); $(b4);
-			$(ba0); $(ba1); $(ba2);
-			#undef $
-            */
-			response->write($200, resp);
 		};
 
 	std::vector<int> ids;
@@ -193,7 +207,7 @@ void start_server(uint16_t port) {
 	std::random_shuffle(ids.begin(), ids.end());
 
 	server.resource["^/bench/avg$"]["GET"] =
-		[&](ResponsePtr response, RequestPtr request) {
+		[&](ResponsePtr response, RequestPtr) {
 			auto t0 = std::chrono::steady_clock::now();
 			double res = 0;
 			for (auto id : ids)
@@ -209,12 +223,12 @@ void start_server(uint16_t port) {
 		};
 
 	server.resource["^/bench/visits$"]["GET"] =
-		[&](ResponsePtr response, RequestPtr request) {
+		[&](ResponsePtr response, RequestPtr) {
 			auto t0 = std::chrono::steady_clock::now();
 			double res = 0;
 			for (auto id : ids) {
-				static thread_local std::vector<VisitData> out;
-				All::get_visits(out, id, {}, {}, {}, {});
+				static thread_local std::vector<VistData> out;
+				All::get_vists(out, id, {}, {}, {}, {});
 			}
 			auto t1 = std::chrono::steady_clock::now();
 			auto ms = std::chrono::duration_cast<std::chrono::microseconds>(t1-t0).count();
@@ -224,123 +238,6 @@ void start_server(uint16_t port) {
 			       "ms    = " << ms << "\n"
 			       "ms/req= " << (ms*1.0/ids.size()) << "\n";
 			response->write($200, ooo);
-		};
-
-	server.resource["^/users/new$"]["POST"] =
-		[&](ResponsePtr response, RequestPtr request) {
-			auto content = request->content.string();
-			User user;
-			uint8_t mask;
-			if (!parse_user(content, user, mask) || mask != (1<<6)-1) {
-				response->write($400, "Bad param");
-				return;
-			}
-			mut.lock();
-			bool ok = All::add_user(user);
-			mut.unlock();
-			if (ok)
-				response->write($200, "{}");
-			else
-				response->write($400, "Bad param");
-		};
-
-	server.resource["^/locations/new$"]["POST"] =
-		[&](ResponsePtr response, RequestPtr request) {
-			auto content = request->content.string();
-			Location location;
-			uint8_t mask;
-			if (!parse_location(content, location, mask) || mask != (1<<5)-1) {
-				response->write($400, "Bad param");
-				return;
-			}
-			mut.lock();
-			bool ok = All::add_location(location);
-			mut.unlock();
-			if (ok)
-				response->write($200, "{}");
-			else
-				response->write($400, "Bad param");
-		};
-
-	server.resource["^/visits/new$"]["POST"] =
-		[&](ResponsePtr response, RequestPtr request) {
-			auto content = request->content.string();
-			Visit visit;
-			uint8_t mask;
-			if (!parse_visit(content, visit, mask) || mask != (1<<5)-1) {
-				response->write($400, "Bad param");
-				return;
-			}
-			mut.lock();
-			bool ok = All::add_visit(visit);
-			mut.unlock();
-			if (ok)
-				response->write($200, "{}");
-			else
-				response->write($400, "Bad param");
-		};
-
-	server.resource["^/users/([0-9]+)$"]["POST"] =
-		[&](ResponsePtr response, RequestPtr request) {
-			uint32_t id = atou32(request->path_match[1]);
-
-			auto content = request->content.string();
-			User user;
-			uint8_t mask;
-			if (!parse_user(content, user, mask) || mask & 1) {
-				response->write($400, "Bad param");
-				return;
-			}
-			user.id = id;
-			mut.lock();
-			bool ok = All::update_user(user, mask);
-			mut.unlock();
-			if (ok)
-				response->write($200, "{}");
-			else
-				response->write($404, "Not found");
-		};
-
-	server.resource["^/locations/([0-9]+)$"]["POST"] =
-		[&](ResponsePtr response, RequestPtr request) {
-			uint32_t id = atou32(request->path_match[1]);
-
-			auto content = request->content.string();
-			Location location;
-			uint8_t mask;
-			if (!parse_location(content, location, mask) || mask & 1) {
-				response->write($400, "Bad param");
-				return;
-			}
-			location.id = id;
-			mut.lock();
-			bool ok = All::update_location(location, mask);
-			mut.unlock();
-			if (ok)
-				response->write($200, "{}");
-			else
-				response->write($404, "Not found");
-		};
-
-	server.resource["^/visits/([0-9]+)$"]["POST"] =
-		[&](ResponsePtr response, RequestPtr request) {
-			uint32_t id = atou32(request->path_match[1]);
-
-			auto content = request->content.string();
-			Visit visit;
-			uint8_t mask;
-			if (!parse_visit(content, visit, mask) || mask & 1) {
-				response->write($400, "Bad param");
-				return;
-			}
-			visit.id = id;
-			mut.lock();
-			bool ok = All::update_visit(visit, mask);
-			mut.unlock();
-			if (ok)
-				response->write($200, "{}");
-			else
-				response->write($404, "Not found");
 		};
 
 	server.default_resource["GET"] =

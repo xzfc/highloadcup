@@ -13,12 +13,12 @@ namespace rapidjson { typedef ::std::size_t SizeType; }
 
 extern std::shared_mutex mut; // server.cpp
 
-#define $key(WHAT, STATE, BIT) \
+#define $key(WHAT, STATE, FIELD) \
 	if (!strcmp(str, WHAT)) { \
-		if (have & (1 << BIT)) \
+		if (mask.FIELD) \
 			{ $err; return false; } \
 		state = STATE; \
-		have |= 1 << BIT; \
+		mask.FIELD = true; \
 		return true; \
 	}
 #define $str(WHAT) \
@@ -27,75 +27,64 @@ extern std::shared_mutex mut; // server.cpp
 	WHAT[length] = 0; \
 	break;
 #define $err return false
+template <class Data> struct JsonHandler;
 
-#define $HANDLER_NAME    UserHandler
-#define $LOCAL_VAR       User user
+#define $DATA            User
 #define $TOPLEVEL_FIELD  "users"
-#define $ADD_NEW         All::add_user(user)
-#define $UPDATE          All::update_user(user, have)
-#define $KEY_NUMBER      6
 #define $KEY_HANDLER \
-	$key("id",         10, 0); \
-	$key("email",      11, 1); \
-	$key("first_name", 12, 2); \
-	$key("last_name",  13, 3); \
-	$key("gender",     14, 4); \
-	$key("birth_date", 15, 5)
+	$key("id",         10, id);             \
+	$key("email",      11, email);          \
+	$key("first_name", 12, first_name);     \
+	$key("last_name",  13, last_name);      \
+	$key("gender",     14, gender_is_male); \
+	$key("birth_date", 15, birth_date)
 #define $INT_HANDLER \
-	case 10: user.id = val;         break; \
-	case 15: user.birth_date = val; break
+	case 10: data.id = val;         break; \
+	case 15: data.birth_date = val; break
 #define $STRING_HANDLER \
-	case 11: $str(user.email); \
-	case 12: $str(user.first_name); \
-	case 13: $str(user.last_name); \
+	case 11: $str(data.email); \
+	case 12: $str(data.first_name); \
+	case 13: $str(data.last_name); \
 	case 14: \
 		 if (length != 1 || (*str != 'm' && *str != 'f')) \
 			{ $err; return false; } \
-		 user.gender_is_male = *str == 'm'; \
+		 data.gender_is_male = *str == 'm'; \
 		 break
 #include "json_tmpl.hpp"
 
 
-#define $HANDLER_NAME    LocationsHandler
-#define $LOCAL_VAR       Location location
+#define $DATA            Loct
 #define $TOPLEVEL_FIELD  "locations"
-#define $ADD_NEW         All::add_location(location)
-#define $UPDATE          All::update_location(location, have)
-#define $KEY_NUMBER      5
 #define $KEY_HANDLER \
-	$key("id",         10, 0); \
-	$key("place",      11, 1); \
-	$key("country",    12, 2); \
-	$key("city",       13, 3); \
-	$key("distance",   14, 4)
+	$key("id",         10, id);      \
+	$key("place",      11, place);   \
+	$key("country",    12, country); \
+	$key("city",       13, city);    \
+	$key("distance",   14, distance)
 #define $INT_HANDLER \
-	case 10: location.id = val;       break; \
-	case 14: location.distance = val; break
+	case 10: data.id = val;       break; \
+	case 14: data.distance = val; break
 #define $STRING_HANDLER \
-	case 11: location.place = str; break; \
-	case 12: $str(location.country); \
-	case 13: $str(location.city)
+	case 11: data.place = str; break; \
+	case 12: $str(data.country); \
+	case 13: $str(data.city)
 #include "json_tmpl.hpp"
 
 
-#define $HANDLER_NAME    VisitsHandler
-#define $LOCAL_VAR       Visit visit
+#define $DATA            Vist
 #define $TOPLEVEL_FIELD  "visits"
-#define $ADD_NEW         All::add_visit(visit)
-#define $UPDATE          All::update_visit(visit, have)
-#define $KEY_NUMBER      5
 #define $KEY_HANDLER \
-	$key("id",         10, 0); \
-	$key("location",   11, 1); \
-	$key("user",       12, 2); \
-	$key("visited_at", 13, 3); \
-	$key("mark",       14, 4)
+	$key("id",         10, id);      \
+	$key("location",   11, loct);    \
+	$key("user",       12, user);    \
+	$key("visited_at", 13, visited); \
+	$key("mark",       14, mark)
 #define $INT_HANDLER \
-	case 10: visit.id = val;          break; \
-	case 11: visit.location = val;    break; \
-	case 12: visit.user = val;        break; \
-	case 13: visit.visited_at = val;  break; /* TODO: timestamp */ \
-	case 14: visit.mark = val;        break  /* TODO: 0..5 */
+	case 10: data.id = val;      break; \
+	case 11: data.loct = val;    break; \
+	case 12: data.user = val;    break; \
+	case 13: data.visited = val; break; /* TODO: timestamp */ \
+	case 14: data.mark = val;    break  /* TODO: 0..5 */
 #define $STRING_HANDLER
 #include "json_tmpl.hpp"
 
@@ -104,69 +93,51 @@ bool starts_with(const std::string &str, const char *prefix)
 	return str.compare(0, strlen(prefix), prefix) == 0;
 }
 
-template<class T>
-bool starts_with(const T& input, const T& match) {
-    return input.size() >= match.size() &&
-	    std::equal(match.begin(), match.end(), input.begin());
+template <class Data>
+static void run_parser(const boost::filesystem::path &path, const char *prefix) {
+	if (!starts_with(path.filename().string(), prefix))
+		return;
+
+	char buffer[2048];
+	rapidjson::Reader reader;
+	FILE *fp = fopen(path.string().c_str(), "r");
+	rapidjson::FileReadStream stream(fp, buffer, sizeof buffer);
+	JsonHandler<Data> handler(false);
+	reader.Parse(stream, handler);
+	fclose(fp);
 }
 
 void parse(const char *dir) {
-	char buffer[2048];
-	rapidjson::Reader reader;
-	FILE *fp;
-
 	for (auto &it: boost::filesystem::directory_iterator(dir)) {
-		auto fname = it.path().filename().string();
-		fp = fopen(it.path().string().c_str(), "r");
-		rapidjson::FileReadStream stream(fp, buffer, sizeof buffer);
-		if (starts_with(fname, "users_")) {
-			UserHandler handler(false);
-			reader.Parse(stream, handler);
-		}
-		if (starts_with(fname, "locations_")) {
-			LocationsHandler handler(false);
-			reader.Parse(stream, handler);
-		}
-		if (starts_with(fname, "visits_")) {
-			VisitsHandler handler(false);
-			reader.Parse(stream, handler);
-		}
-		fclose(fp);
+		auto path = it.path();
+		run_parser<User>(path, "users_");
+		run_parser<Loct>(path, "locations_");
+		run_parser<Vist>(path, "visits_");
 	}
 }
 
-bool parse_user(const std::string &json, User &user, uint8_t &mask) {
+template <class Data>
+static bool json_parse_single_tmpl(const std::string &json, Data &data, typename Data::Mask &mask)
+{
 	rapidjson::Reader reader;
 	rapidjson::MemoryStream stream(json.c_str(), json.size());
-	UserHandler handler(true);
+	JsonHandler<Data> handler(true);
 	bool ok = reader.Parse(stream, handler);
 	if (ok) {
-		user = handler.user;
-		mask = handler.have;
+		data = handler.data;
+		mask = handler.mask;
 	}
 	return ok;
 }
 
-bool parse_location(const std::string &json, Location &location, uint8_t &mask) {
-	rapidjson::Reader reader;
-	rapidjson::MemoryStream stream(json.c_str(), json.size());
-	LocationsHandler handler(true);
-	bool ok = reader.Parse(stream, handler);
-	if (ok) {
-		location = handler.location;
-		mask = handler.have;
-	}
-	return ok;
+bool json_parse_single(const std::string &json, User &data, UserMask &mask) {
+	return json_parse_single_tmpl(json, data, mask);
 }
 
-bool parse_visit(const std::string &json, Visit &visit, uint8_t &mask) {
-	rapidjson::Reader reader;
-	rapidjson::MemoryStream stream(json.c_str(), json.size());
-	VisitsHandler handler(true);
-	bool ok = reader.Parse(stream, handler);
-	if (ok) {
-		visit = handler.visit;
-		mask = handler.have;
-	}
-	return ok;
+bool json_parse_single(const std::string &json, Loct &data, LoctMask &mask) {
+	return json_parse_single_tmpl(json, data, mask);
+}
+
+bool json_parse_single(const std::string &json, Vist &data, VistMask &mask) {
+	return json_parse_single_tmpl(json, data, mask);
 }

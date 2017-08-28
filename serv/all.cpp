@@ -11,17 +11,17 @@ struct UserP : User {
 	bi::avl_set_member_hook<> hook_id;
 };
 
-struct LocationP : Location {
-	LocationP(const Location &location) : Location(location) {}
+struct LoctP : Loct {
+	LoctP(const Loct &loct) : Loct(loct) {}
 	bi::avl_set_member_hook<> hook_id;
 };
 
-struct VisitP : Visit {
-	VisitP(const Visit &visit) : Visit(visit) {}
-	bi::avl_set_member_hook<> hook_id, hook_location, hook_user_visited;
+struct VistP : Vist {
+	VistP(const Vist &vist) : Vist(vist) {}
+	bi::avl_set_member_hook<> hook_id, hook_loct, hook_user_visted;
 
-	LocationP *location_ptr = 0;
-	LocationP *get_location();
+	LoctP *loct_ptr = 0;
+	LoctP *get_loct();
 
 	UserP *user_ptr = 0;
 	UserP *get_user();
@@ -35,17 +35,17 @@ struct KeyId {
 	}
 };
 
-struct CompareVisitUserVisited {
-	typedef Visit type;
-	const Visit &operator()(const VisitP &v) const {
+struct CompareVistUserVisted {
+	typedef Vist type;
+	const Vist &operator()(const VistP &v) const {
 		return v;
 	}
-	bool operator()(const Visit &a, const Visit &b) const {
+	bool operator()(const Vist &a, const Vist &b) const {
 		if (a.user < b.user) return true;
 		if (a.user > b.user) return false;
 
-		if (a.visited_at < b.visited_at) return true;
-		if (a.visited_at > b.visited_at) return false;
+		if (a.visited < b.visited) return true;
+		if (a.visited > b.visited) return false;
 
 		if (a.id < b.id) return true;
 		if (a.id > b.id) return false;
@@ -54,17 +54,17 @@ struct CompareVisitUserVisited {
 	}
 };
 
-struct CompareVisitLocation {
-	typedef Visit type;
-	const Visit &operator()(const VisitP &v) const {
+struct CompareVistLoct {
+	typedef Vist type;
+	const Vist &operator()(const VistP &v) const {
 		return v;
 	}
-	bool operator()(const Visit &a, const Visit &b) const {
-		if (a.location < b.location) return true;
-		if (a.location > b.location) return false;
+	bool operator()(const Vist &a, const Vist &b) const {
+		if (a.loct < b.loct) return true;
+		if (a.loct > b.loct) return false;
 
-		if (a.visited_at < b.visited_at) return true;
-		if (a.visited_at > b.visited_at) return false;
+		if (a.visited < b.visited) return true;
+		if (a.visited > b.visited) return false;
 
 		if (a.id < b.id) return true;
 		if (a.id > b.id) return false;
@@ -80,38 +80,38 @@ typedef bi::avl_set<
 > UserTreeId;
 
 typedef bi::avl_set<
-	LocationP,
-	bi::member_hook<LocationP, bi::avl_set_member_hook<>, &LocationP::hook_id>,
+	LoctP,
+	bi::member_hook<LoctP, bi::avl_set_member_hook<>, &LoctP::hook_id>,
 	bi::key_of_value<KeyId>
-> LocationTreeId;
+> LoctTreeId;
 
 typedef bi::avl_set<
-	VisitP,
-	bi::member_hook<VisitP, bi::avl_set_member_hook<>, &VisitP::hook_id>,
+	VistP,
+	bi::member_hook<VistP, bi::avl_set_member_hook<>, &VistP::hook_id>,
 	bi::key_of_value<KeyId>
-> VisitTreeId;
+> VistTreeId;
 
 typedef bi::avl_set<
-	VisitP,
-	bi::member_hook<VisitP, bi::avl_set_member_hook<>, &VisitP::hook_location>,
-	bi::key_of_value<CompareVisitLocation>,
-	bi::compare<CompareVisitLocation>
-> VisitTreeLocation;
+	VistP,
+	bi::member_hook<VistP, bi::avl_set_member_hook<>, &VistP::hook_loct>,
+	bi::key_of_value<CompareVistLoct>,
+	bi::compare<CompareVistLoct>
+> VistTreeLoct;
 
 typedef bi::avl_set<
-	VisitP,
-	bi::member_hook<VisitP, bi::avl_set_member_hook<>, &VisitP::hook_user_visited>,
-	bi::key_of_value<CompareVisitUserVisited>,
-	bi::compare<CompareVisitUserVisited>
-> VisitTreeUserVisited;
+	VistP,
+	bi::member_hook<VistP, bi::avl_set_member_hook<>, &VistP::hook_user_visted>,
+	bi::key_of_value<CompareVistUserVisted>,
+	bi::compare<CompareVistUserVisted>
+> VistTreeUserVisted;
 
 struct AllP {
 	UserTreeId            tree_user_id;
-	LocationTreeId        tree_location_id;
-	VisitTreeId           tree_visit_id;
+	LoctTreeId        tree_loct_id;
+	VistTreeId           tree_vist_id;
 
-	VisitTreeLocation     tree_visit_location;
-	VisitTreeUserVisited  tree_visit_user_visited;
+	VistTreeLoct     tree_vist_loct;
+	VistTreeUserVisted  tree_vist_user_visted;
 
 	YearDiffer year_differ;
 };
@@ -119,17 +119,17 @@ struct AllP {
 static AllP allp;
 
 
-LocationP *VisitP::get_location() {
-	if (location_ptr != nullptr)
-		return location_ptr;
-	auto f = allp.tree_location_id.find(location);
-	location_ptr = f != allp.tree_location_id.end() ? &*f : nullptr;
-	if (location_ptr == nullptr)
+LoctP *VistP::get_loct() {
+	if (loct_ptr != nullptr)
+		return loct_ptr;
+	auto f = allp.tree_loct_id.find(loct);
+	loct_ptr = f != allp.tree_loct_id.end() ? &*f : nullptr;
+	if (loct_ptr == nullptr)
 		std::cout << "Wooo" << std::endl;
-	return location_ptr;
+	return loct_ptr;
 }
 
-UserP *VisitP::get_user() {
+UserP *VistP::get_user() {
 	if (user_ptr != nullptr)
 		return user_ptr;
 	auto f = allp.tree_user_id.find(user);
@@ -140,7 +140,7 @@ UserP *VisitP::get_user() {
 }
 
 
-bool All::add_user(const User &user) {
+bool All::add(const User &user) {
 	auto it = allp.tree_user_id.find(user.id);
 	if (it != allp.tree_user_id.end())
 		return false;
@@ -149,70 +149,70 @@ bool All::add_user(const User &user) {
 	return true;
 }
 
-bool All::add_location(const Location &location) {
-	auto it = allp.tree_location_id.find(location.id);
-	if (it != allp.tree_location_id.end())
+bool All::add(const Loct &loct) {
+	auto it = allp.tree_loct_id.find(loct.id);
+	if (it != allp.tree_loct_id.end())
 		return false;
-	auto e = new LocationP(location);
-	allp.tree_location_id.insert(it, *e);
+	auto e = new LoctP(loct);
+	allp.tree_loct_id.insert(it, *e);
 	return true;
 }
 
-bool All::add_visit(const Visit &visit) {
-	auto it = allp.tree_visit_id.find(visit.id);
-	if (it != allp.tree_visit_id.end())
+bool All::add(const Vist &vist) {
+	auto it = allp.tree_vist_id.find(vist.id);
+	if (it != allp.tree_vist_id.end())
 		return false;
-	auto e = new VisitP(visit);
-	allp.tree_visit_id.insert(it, *e);
-	allp.tree_visit_location.insert(*e);
-	allp.tree_visit_user_visited.insert(*e);
+	auto e = new VistP(vist);
+	allp.tree_vist_id.insert(it, *e);
+	allp.tree_vist_loct.insert(*e);
+	allp.tree_vist_user_visted.insert(*e);
 	return true;
 }
 
-bool All::update_user(const User &user, uint8_t mask) {
+bool All::update(const User &user, UserMask mask) {
 	auto it = allp.tree_user_id.find(user.id);
 	if (it == allp.tree_user_id.end())
 		return false;
-	if (mask & (1<<1)) std::strcpy(it->email,           user.email);
-	if (mask & (1<<2)) std::strcpy(it->first_name,      user.first_name);
-	if (mask & (1<<3)) std::strcpy(it->last_name,       user.last_name);
-	if (mask & (1<<4))             it->gender_is_male = user.gender_is_male;
-	if (mask & (1<<5))             it->birth_date     = user.birth_date;
+	if (mask.email)          std::strcpy(it->email,           user.email);
+	if (mask.first_name)     std::strcpy(it->first_name,      user.first_name);
+	if (mask.last_name)      std::strcpy(it->last_name,       user.last_name);
+	if (mask.gender_is_male) it->gender_is_male = user.gender_is_male;
+	if (mask.birth_date)     it->birth_date     = user.birth_date;
 	return true;
 }
 
-bool All::update_location(const Location &location, uint8_t mask) {
-	auto it = allp.tree_location_id.find(location.id);
-	if (it == allp.tree_location_id.end())
+bool All::update(const Loct &loct, LoctMask mask) {
+	auto it = allp.tree_loct_id.find(loct.id);
+	if (it == allp.tree_loct_id.end())
 		return false;
-	if (mask & (1<<1))             it->place    = location.place;
-	if (mask & (1<<2)) std::strcpy(it->country,   location.country);
-	if (mask & (1<<3)) std::strcpy(it->city,      location.city);
-	if (mask & (1<<4))             it->distance = location.distance;
+	if (mask.place)    it->place    = loct.place;
+	if (mask.country)  std::strcpy(it->country,   loct.country);
+	if (mask.city)     std::strcpy(it->city,      loct.city);
+	if (mask.distance) it->distance = loct.distance;
 	return true;
 }
 
-bool All::update_visit(const Visit &visit, uint8_t mask) {
-	auto it = allp.tree_visit_id.find(visit.id);
-	if (it == allp.tree_visit_id.end())
+bool All::update(const Vist &vist, VistMask mask) {
+	auto it = allp.tree_vist_id.find(vist.id);
+	if (it == allp.tree_vist_id.end())
 		return false;
 
-	if (mask & (1<<1 | 1<<3))
-		allp.tree_visit_location.erase(*it);
+	if (mask.loct || mask.visited)
+		allp.tree_vist_loct.erase(*it);
 
-	if (mask & (1<<2 | 1<<3))
-		allp.tree_visit_user_visited.erase(*it);
+	if (mask.user || mask.visited)
+		allp.tree_vist_user_visted.erase(*it);
 
-	if (mask & (1<<1)) { it->location   = visit.location; it->location_ptr = 0; }
-	if (mask & (1<<2)) { it->user       = visit.user; it->user_ptr = 0; }
-	if (mask & (1<<3)) it->visited_at = visit.visited_at;
-	if (mask & (1<<4)) it->mark       = visit.mark;
+	if (mask.loct)      { it->loct      = vist.loct; it->loct_ptr = 0; }
+	if (mask.user)      { it->user      = vist.user; it->user_ptr = 0; }
+	if (mask.visited)   it->visited = vist.visited;
+	if (mask.mark)        it->mark      = vist.mark;
 
-	if (mask & (1<<1 | 1<<3))
-		allp.tree_visit_location.insert(*it);
+	if (mask.loct || mask.visited)
+		allp.tree_vist_loct.insert(*it);
 
-	if (mask & (1<<2 | 1<<3))
-		allp.tree_visit_user_visited.insert(*it);
+	if (mask.user || mask.visited)
+		allp.tree_vist_user_visted.insert(*it);
 
 	return true;
 }
@@ -222,18 +222,18 @@ User *All::get_user(uint32_t id) {
 	return f != allp.tree_user_id.end() ? &*f : nullptr;
 }
 
-Location *All::get_location(uint32_t id) {
-	auto f = allp.tree_location_id.find(id);
-	return f != allp.tree_location_id.end() ? &*f : nullptr;
+Loct *All::get_loct(uint32_t id) {
+	auto f = allp.tree_loct_id.find(id);
+	return f != allp.tree_loct_id.end() ? &*f : nullptr;
 }
 
-Visit *All::get_visit(uint32_t id) {
-	auto f = allp.tree_visit_id.find(id);
-	return f != allp.tree_visit_id.end() ? &*f : nullptr;
+Vist *All::get_vist(uint32_t id) {
+	auto f = allp.tree_vist_id.find(id);
+	return f != allp.tree_vist_id.end() ? &*f : nullptr;
 }
 
-bool All::get_visits(
-	std::vector<VisitData> &out,
+bool All::get_vists(
+	std::vector<VistData> &out,
 	uint32_t id,
 	boost::optional<time_t> from_date,
 	boost::optional<time_t> to_date,
@@ -251,36 +251,36 @@ bool All::get_visits(
 	if (*from_date >= *to_date)
 		return true;
 
-	Visit first;
+	Vist first;
 	first.user = id;
-	first.visited_at = *from_date;
+	first.visited = *from_date;
 	first.id = 0;
 
-	Visit last;
+	Vist last;
 	last.user = id;
-	last.visited_at = *to_date;
+	last.visited = *to_date;
 	last.id = 0xFFFFFFFFu;
 
-	auto it = allp.tree_visit_user_visited.lower_bound(first);
-	if (it == allp.tree_visit_user_visited.end())
+	auto it = allp.tree_vist_user_visted.lower_bound(first);
+	if (it == allp.tree_vist_user_visted.end())
 		return true;
 
-	auto end = allp.tree_visit_user_visited.upper_bound(last);
+	auto end = allp.tree_vist_user_visted.upper_bound(last);
 
 	for (; it != end; it++) {
-		auto &visit = *it;
-		Location *location = visit.get_location();
-		if (location == nullptr)
+		auto &vist = *it;
+		Loct *loct = vist.get_loct();
+		if (loct == nullptr)
 			continue;
 
-		if (country     && location->country != *country ||
-		    to_distance && location->distance >= *to_distance)
+		if (country     && loct->country != *country ||
+		    to_distance && loct->distance >= *to_distance)
 			continue;
 
 		out.push_back({
-			visit.mark,
-			visit.visited_at,
-			location->place
+			vist.mark,
+			vist.visited,
+			loct->place
 		});
 	}
 	return true;
@@ -309,26 +309,26 @@ double All::get_avg(
 	if (*from_date >= *to_date)
 		return 0;
 
-	Visit first;
-	first.location = id;
-	first.visited_at = *from_date;
+	Vist first;
+	first.loct = id;
+	first.visited = *from_date;
 	first.id = 0;
 
-	Visit last;
-	last.location = id;
-	last.visited_at = *to_date;
+	Vist last;
+	last.loct = id;
+	last.visited = *to_date;
 	last.id = 0xFFFFFFFFu;
 
-	auto it = allp.tree_visit_location.lower_bound(first);
-	if (it == allp.tree_visit_location.end())
+	auto it = allp.tree_vist_loct.lower_bound(first);
+	if (it == allp.tree_vist_loct.end())
 		return 0;
 
-	auto end = allp.tree_visit_location.upper_bound(last);
+	auto end = allp.tree_vist_loct.upper_bound(last);
 
 	unsigned count = 0, sum = 0;
 	for (; it != end; it++) {
-		auto &visit = *it;
-		UserP *user = visit.get_user();
+		auto &vist = *it;
+		UserP *user = vist.get_user();
 		if (user == nullptr)
 			continue;
 
@@ -338,7 +338,7 @@ double All::get_avg(
 			continue;
 
 		count++;
-		sum += visit.mark;
+		sum += vist.mark;
 	}
 
 	if (count == 0)
@@ -347,12 +347,18 @@ double All::get_avg(
 }
 
 void All::optimize() {
-	for (auto &visit : allp.tree_visit_id) {
-		visit.get_location();
-		visit.get_user();
+	for (auto &vist : allp.tree_vist_id) {
+		vist.get_loct();
+		vist.get_user();
 	}
 }
 
 void All::set_options(time_t now, bool full) {
 	allp.year_differ.set_now(now);
+}
+
+namespace All {
+	template <> User *get<User>(uint32_t id) { return get_user(id); }
+	template <> Vist *get<Vist>(uint32_t id) { return get_vist(id); }
+	template <> Loct *get<Loct>(uint32_t id) { return get_loct(id); }
 }

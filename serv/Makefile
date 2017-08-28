@@ -1,4 +1,4 @@
-CXXFLAGS := -std=c++17 -O3 -MMD -MP -Wall -Wextra -Wno-parentheses
+CXXFLAGS := -std=c++17 -O3 -MMD -MP -Wall -Wextra -Wno-parentheses -Wno-maybe-uninitialized
 LDFLAGS := -lboost_system -lboost_filesystem -pthread
 SRC := main.cpp json.cpp all.cpp server.cpp
 OBJ := $(SRC:.cpp=.o)

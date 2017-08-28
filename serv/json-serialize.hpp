@@ -21,37 +21,37 @@ const char *json_serialize(const User &user) {
 	return sb.GetString();
 }
 
-const char *json_serialize(const Location &location) {
+const char *json_serialize(const Loct &loct) {
 	rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
 	sb.Clear();
 	writer.StartObject();
 
-	writer.String("id");         writer.Uint(location.id);
-	writer.String("place");      writer.String(location.place.c_str());
-	writer.String("country");    writer.String(location.country);
-	writer.String("city");       writer.String(location.city);
-	writer.String("distance");   writer.Uint(location.distance);
+	writer.String("id");         writer.Uint  (loct.id);
+	writer.String("place");      writer.String(loct.place.c_str());
+	writer.String("country");    writer.String(loct.country);
+	writer.String("city");       writer.String(loct.city);
+	writer.String("distance");   writer.Uint  (loct.distance);
 
 	writer.EndObject();
 	return sb.GetString();
 }
 
-const char *json_serialize(const Visit &visit) {
+const char *json_serialize(const Vist &vist) {
 	rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
 	sb.Clear();
 	writer.StartObject();
 
-	writer.String("id");         writer.Uint(visit.id);
-	writer.String("location");   writer.Uint(visit.location);
-	writer.String("user");       writer.Uint(visit.user);
-	writer.String("visited_at"); writer.Uint(visit.visited_at);
-	writer.String("mark");       writer.Uint(visit.mark);
+	writer.String("id");         writer.Uint(vist.id);
+	writer.String("location");   writer.Uint(vist.loct);
+	writer.String("user");       writer.Uint(vist.user);
+	writer.String("visited_at"); writer.Uint(vist.visited);
+	writer.String("mark");       writer.Uint(vist.mark);
 
 	writer.EndObject();
 	return sb.GetString();
 }
 
-const char *json_serialize(const std::vector<VisitData> &data) {
+const char *json_serialize(const std::vector<VistData> &data) {
 	rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
 	sb.Clear();
 
@@ -63,7 +63,7 @@ const char *json_serialize(const std::vector<VisitData> &data) {
 	for (const auto &i : data) {
 		writer.StartObject();
 		writer.String("mark");       writer.Uint(i.mark);
-		writer.String("visited_at"); writer.Uint(i.visited_at);
+		writer.String("visited_at"); writer.Uint(i.visited);
 		writer.String("place");      writer.String(i.place.c_str());
 		writer.EndObject();
 	}
