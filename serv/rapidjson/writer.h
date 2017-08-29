@@ -284,6 +284,8 @@ public:
         os_->Flush();
     }
 
+    OutputStream* GetStream() const { return os_; }
+
 protected:
     //! Information for each nested level
     struct Level {

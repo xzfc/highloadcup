@@ -337,16 +337,19 @@ get_avg_(uint32_t loct_id,
 	return {res_sum, res_cnt};
 }
 
-static
-bool
-get_visits_(std::vector<VistData> &out,
-            uint32_t    user_id,
-	    time_t      from_date,
-	    time_t      to_date,
-	    boost::optional<std::string> country,
-	    uint32_t    to_distance)
+bool All::get_vists(
+		std::vector<VistData> &out,
+		uint32_t    id,
+		time_t      from_date,
+		time_t      to_date,
+		const char *country,
+		uint32_t    to_distance
+	      )
 {
-	auto visits = all.user_visits.get(user_id);
+	out.clear();
+	if (!all.users.have(id))
+		return false;
+	auto visits = all.user_visits.get(id);
 	if (visits == nullptr)
 		return false;
 	for (auto visit = std::upper_bound(visits->begin(), visits->end(), from_date, CmpVisited{});
@@ -355,7 +358,7 @@ get_visits_(std::vector<VistData> &out,
 	{
 		auto loct = all.locts.get(visit->loct);
 		if (loct == nullptr ||
-		    country && loct->country != *country ||
+		    country && strcmp(loct->country, country) ||
 		    loct->distance >= to_distance)
 			continue;
 		out.push_back({visit->mark, visit->visited, loct->place});
@@ -363,44 +366,30 @@ get_visits_(std::vector<VistData> &out,
 	return true;
 }
 
-bool All::get_vists(
-		std::vector<VistData> &out,
-		uint32_t id,
-		boost::optional<time_t>      from_date,
-		boost::optional<time_t>      to_date,
-		boost::optional<std::string> country,
-		boost::optional<uint32_t>    to_distance
-	      )
-{
-	out.clear();
-	return get_visits_(
-		out, id,
-		from_date ? *from_date : std::numeric_limits<time_t>::min(),
-		to_date   ? *to_date   : std::numeric_limits<time_t>::max(),
-		country,
-		to_distance ? *to_distance : 0xFFFFFFFFU);
-		
-}
-
 double All::get_avg(
 		uint32_t id,
-		boost::optional<time_t>  from_date,
-		boost::optional<time_t>  to_date,
-		boost::optional<uint8_t> from_age,
-		boost::optional<uint8_t> to_age,
-		boost::optional<bool>    gender_is_male
+		time_t   from_date,
+		time_t   to_date,
+		int32_t  from_age,
+		int32_t  to_age,
+		char     gender
 	      )
 {
+	if (!all.locts.get(id))
+		return -1;
+	boost::optional<bool> gender_is_male;
+	if (gender == 'm') gender_is_male = { true  };
+	if (gender == 'f') gender_is_male = { false };
 	auto res =  get_avg_(
 		id,
-		from_date ? *from_date : std::numeric_limits<time_t>::min(),
-		to_date   ? *to_date   : std::numeric_limits<time_t>::max(),
-		to_age   ? all.year_differ.jaja(*to_age) : std::numeric_limits<time_t>::min(),
-		from_age ? all.year_differ.jaja(*from_age) : std::numeric_limits<time_t>::max(),
+		from_date,
+		to_date,
+		all.year_differ.jaja(to_age),
+		all.year_differ.jaja(from_age),
 		gender_is_male);
 	if (res.second == 0)
 		return 0;
-	return (res.first / (double)res.second) + 1e-7;
+	return (res.first / (double)res.second) + 1e-10;
 }
 
 void All::optimize() {

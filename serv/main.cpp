@@ -1,10 +1,12 @@
 #include "all.hpp"
 #include "json.hpp"
+#include "http.hpp"
 #include <iostream>
 #include <fstream>
 #include <iomanip>
+#include <shared_mutex>
 
-void start_server(uint16_t port);
+std::shared_mutex mut;
 
 void load_options(const std::string &path) {
 	std::ifstream options(path);
@@ -32,5 +34,6 @@ int main(int argc, char **argv) {
 	load_options(argv[1] + std::string("/options.txt"));
 	All::optimize();
 	put_log("optimized");
-	start_server(atoi(argv[2]));
+
+	run_http_server(atoi(argv[2]), http_hande_request);
 }

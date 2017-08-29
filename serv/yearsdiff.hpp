@@ -58,6 +58,8 @@ struct YearDiffer {
 
 	time_t jaja(int y) const
 	{
+		if (y >  1000) return std::numeric_limits<time_t>::min();
+		if (y < -1000) return std::numeric_limits<time_t>::max();
 		using std::get;
 		return days_from_civil(
 				get<0>(now) - y,
