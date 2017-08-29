@@ -33,7 +33,7 @@ private:
 
 typedef rapidjson::Writer<Buffer> Writer;
 
-void json_serialize(Writer &writer, const User &user) {
+static void json_serialize(Writer &writer, const User &user) {
 	writer.StartObject();
 
 	writer.String("id");         writer.Uint(user.id);
@@ -46,7 +46,7 @@ void json_serialize(Writer &writer, const User &user) {
 	writer.EndObject();
 }
 
-void json_serialize(Writer &writer, const Loct &loct) {
+static void json_serialize(Writer &writer, const Loct &loct) {
 	writer.StartObject();
 
 	writer.String("id");         writer.Uint  (loct.id);
@@ -58,7 +58,7 @@ void json_serialize(Writer &writer, const Loct &loct) {
 	writer.EndObject();
 }
 
-void json_serialize(Writer &writer, const Vist &vist) {
+static void json_serialize(Writer &writer, const Vist &vist) {
 	writer.StartObject();
 
 	writer.String("id");         writer.Uint(vist.id);
@@ -70,7 +70,7 @@ void json_serialize(Writer &writer, const Vist &vist) {
 	writer.EndObject();
 }
 
-const void json_serialize(Writer &writer, const std::vector<VistData> &data) {
+static void json_serialize(Writer &writer, const std::vector<VistData> &data) {
 	writer.StartObject();
 	writer.String("visits");
 
@@ -160,7 +160,9 @@ void http_hande_request(HttpRequest &req) {
 	req.post_data[req.post_data_length] = 0;
 
 	switch (req.req->type) {
-	// case HttpRequestLineType::error:
+	case HttpRequestLineType::error:
+		req.status = 500;
+		req.reply_length = sprintf(req.reply, ":>");
 		break;
 	case HttpRequestLineType::not_found:
 		req.status = 404;
@@ -221,9 +223,6 @@ void http_hande_request(HttpRequest &req) {
 	case HttpRequestLineType::post_user_new: server_new<User>(req, writer); break;
 	case HttpRequestLineType::post_loct_new: server_new<Loct>(req, writer); break;
 	case HttpRequestLineType::post_vist_new: server_new<Vist>(req, writer); break;
-	default:
-		req.status = 500;
-		req.reply_length = sprintf(req.reply, ":>");
 	}
 
 	req.reply_length = buffer.GetSize();
