@@ -88,7 +88,7 @@ struct Server {
 	int thread;
 	int port;
 	HttpHandlerFun *handle_request;
-	Client clients[2000];
+	Client clients[2010];
 
 	Server(int thread, int port, HttpHandlerFun handle_request);
 	void run();
