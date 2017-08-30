@@ -42,7 +42,7 @@ struct Pool {
 		free.pop_back();
 		return e;
 	}
-	void put(T *e) { free.push_back(e); }
+	void put(T *e) { free.push_back(e);  }
 	auto begin()   { return all.begin(); }
 	auto end()     { return all.end(); }
 	const size_type size;
@@ -204,9 +204,6 @@ void Client::accept(Server *server) {
 
 	epollctl(EPOLL_CTL_ADD, false);
 
-	int flags = fcntl(fd, F_GETFL, 0);
-	$check(fcntl(fd, F_SETFL, flags | O_NONBLOCK) == 0);
-
 	input.reset();
 }
 
@@ -279,8 +276,6 @@ void Client::handle_request() {
 	output.start = pad - prepended;
 	output.size = prepended + req.reply_length;
 	output.done = 0;
-
-	output.write();
 }
 
 void Client::on_read() {
@@ -298,8 +293,8 @@ Output::Output(Client &client) : client(client) {
 void Output::write() {
 	ssize_t s = ::write(client.fd, buf + done + start, size - done);
 	if (s < 0) {
-		//if (errno == EAGAIN || errno == EWOULDBLOCK)
-		//	return;
+		// if (errno == EAGAIN || errno == EWOULDBLOCK)
+		// 	return;
 		$warn("write: %s", strerror(errno));
 		return;
 	}
@@ -307,12 +302,16 @@ void Output::write() {
 	done += s;
 
 	if (done >= size) {
-		if (client.input.http_requst_line.keep_alive && 0) {
+#ifdef KEEPALIVE
+		if (client.input.http_requst_line.keep_alive) {
+#endif
 			client.epollctl(EPOLL_CTL_MOD, false);
 			client.input.reset();
+#ifdef KEEPALIVE
 		} else {
 			client.close();
 		}
+#endif
 	}
 }
 
@@ -373,7 +372,9 @@ void Input::read() {
 
 void Input::process_line() {
 	static const char ContentLength[] = "Content-Length: ";
+#ifdef KEEPALIVE
 	static const char KeepAlive[] = "Connection: Keep-Alive";
+#endif
 	// std::cout << "Line: `" << buf+line_start << "`\n";
 
 	if (line_state == 0) {
@@ -396,9 +397,12 @@ void Input::process_line() {
 				  sizeof ContentLength - 1) == 0) {
 			content_length = atoi(
 				buf + line_start + sizeof ContentLength - 1);
-		} else if (!http_requst_line.keep_alive &&
+		}
+#ifdef KEEPALIVE
+		else if (!http_requst_line.keep_alive &&
 		           strcmp(buf + line_start, KeepAlive) == 0)
 			http_requst_line.keep_alive = true;
+#endif
 		return;
 	}
 }

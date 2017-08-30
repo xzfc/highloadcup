@@ -203,9 +203,10 @@ void http_parse_requst_line(char *line, HttpRequestLine &res) {
 		});
 	if (!rc) { res.type = $t::bad_param; goto end;; }
 
-end:
-
+end:;
+#ifdef KEEPALIVE
 	while (*line != 0)
 		line++;
 	res.keep_alive = line[-1] != '0'; // check for HTTP 1/.0
+#endif
 }
