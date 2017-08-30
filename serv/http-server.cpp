@@ -64,7 +64,6 @@ struct Client {
 	Server *server;
 
 	int fd;
-	bool keep_alive;
 	Input  input;
 	Output output;
 
@@ -173,8 +172,6 @@ void Client::accept_() {
 
 	epollctl(EPOLL_CTL_ADD, false);
 	input.reset();
-
-	keep_alive = false;
 }
 
 void Client::close_() {
@@ -266,7 +263,7 @@ void Output::write() {
 	done += s;
 
 	if (done >= size) {
-		if (client.keep_alive) {
+		if (client.input.http_requst_line.keep_alive) {
 			client.epollctl(EPOLL_CTL_MOD, false);
 			client.input.reset();
 		} else {
@@ -355,8 +352,9 @@ void Input::process_line() {
 				  sizeof ContentLength - 1) == 0) {
 			content_length = atoi(
 				buf + line_start + sizeof ContentLength - 1);
-		} else if (strcmp(buf + line_start, KeepAlive) == 0)
-			client.keep_alive = true;
+		} else if (!http_requst_line.keep_alive &&
+		           strcmp(buf + line_start, KeepAlive) == 0)
+			http_requst_line.keep_alive = true;
 		return;
 	}
 }

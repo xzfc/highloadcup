@@ -32,6 +32,7 @@ struct HttpRequestLine {
 	int16_t     from_age;
 	int16_t     to_age;
 	char        gender;     // 0, 'm', 'f'
+	bool        keep_alive;
 };
 
 struct HttpRequest {

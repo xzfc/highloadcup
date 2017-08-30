@@ -108,6 +108,7 @@ bool parse_param<char>(const char *s, char &out) {
 
 void http_parse_requst_line(char *line, HttpRequestLine &res) {
 	char *advance_tmp;
+	bool rc;
 
 #define $advance(STR) (memcmp(line, STR, sizeof STR - 1) == 0 && (line += sizeof STR - 1, true))
 #define $advance_u32(NUM) ((advance_tmp = advance_u32(line, NUM)) && (line = advance_tmp, true))
@@ -118,11 +119,11 @@ void http_parse_requst_line(char *line, HttpRequestLine &res) {
 		else if ($advance("users/"    )) res.type = $t::get_user;
 		else if ($advance("locations/")) res.type = $t::get_loct;
 		else if ($advance("visits/"   )) res.type = $t::get_vist;
-		else { res.type = $t::not_found; return; }
+		else { res.type = $t::not_found; goto end; }
 
 		if (!$advance_u32(res.id)) {
 			res.type = $t::not_found;
-			return;
+			goto end;
 		}
 
 		if (false);
@@ -135,7 +136,7 @@ void http_parse_requst_line(char *line, HttpRequestLine &res) {
 		else if ($advance("users/"    )) res.type = $t::post_user;
 		else if ($advance("locations/")) res.type = $t::post_loct;
 		else if ($advance("visits/"   )) res.type = $t::post_vist;
-		else { res.type = $t::not_found; return; }
+		else { res.type = $t::not_found; goto end; }
 
 		if ($advance("new")) {
 			switch (res.type) {
@@ -148,12 +149,12 @@ void http_parse_requst_line(char *line, HttpRequestLine &res) {
 			// ok
 		} else {
 			res.type = $t::not_found;
-			return;
+			goto end;
 		}
 	} else {
 		res.type = $t::error;
 		// FIXME
-		return;
+		goto end;
 	}
 
 	set_min(res.from_date);
@@ -180,7 +181,7 @@ void http_parse_requst_line(char *line, HttpRequestLine &res) {
 		p_country[]     = "country",
 		p_gender[]      = "gender";
 
-	bool rc = advance_parameters(&line,
+	rc = advance_parameters(&line,
 		[&](const char *param, const char *value) {
 			switch (res.type) {
 			case $t::get_user_vists:
@@ -200,12 +201,11 @@ void http_parse_requst_line(char *line, HttpRequestLine &res) {
 			}
 			return true;
 		});
-	if (!rc) { res.type = $t::bad_param; return; }
+	if (!rc) { res.type = $t::bad_param; goto end;; }
 
-	/*
-	if (!$advance("HTTP/1.1\0")) {
-		res.type = $t::error;
-		return;
-	}
-	*/
+end:
+
+	while (*line != 0)
+		line++;
+	res.keep_alive = line[-1] != '0'; // check for HTTP 1/.0
 }
