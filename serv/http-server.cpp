@@ -5,10 +5,15 @@
 #include <errno.h>
 #include <string.h>
 #include <thread>
+#include <mutex>
+#include <vector>
+#include <fcntl.h>
 
 #include "http.hpp"
 
 namespace {
+
+static std::mutex mut;
 
 static void check(const char *file, int line, const char *func, const char *cond_str, int cond) {
 	if (!cond) {
@@ -22,8 +27,34 @@ static void check(const char *file, int line, const char *func, const char *cond
 #define $warn(TEXT, ...)  \
 	fprintf(stderr, "%s:%d: %s: " TEXT ".\n", __FILE__, __LINE__, __PRETTY_FUNCTION__, ##__VA_ARGS__);
 
+template <class T>
+struct Pool {
+	typedef typename std::vector<T>::size_type size_type;
+	Pool(size_type size) : size(size), all(size) {
+		free.reserve(size);
+		for (size_type i = 0; i < size; i++)
+			free.push_back(&all[size - i - 1]);
+	}
+	T *get() {
+		if (free.size() == 0)
+			return nullptr;
+		auto e = free.back();
+		free.pop_back();
+		return e;
+	}
+	void put(T *e) { free.push_back(e); }
+	auto begin()   { return all.begin(); }
+	auto end()     { return all.end(); }
+	const size_type size;
+private:
+	std::vector<T>  all;
+	std::vector<T*> free;
+};
+
 struct Client;
 struct Server;
+
+static Pool<Client> client_pool(2048);
 
 struct Input {
 	struct Client &client;
@@ -69,8 +100,8 @@ struct Client {
 
 	Client();
 
-	void accept_();
-	void close_();
+	void accept(Server *server);
+	void close();
 	void epollctl(int op, bool write = false);
 
 	void handle_request();
@@ -88,18 +119,15 @@ struct Server {
 	int thread;
 	int port;
 	HttpHandlerFun *handle_request;
-	Client clients[2017];
 
 	Server(int thread, int port, HttpHandlerFun handle_request);
 	void run();
-	void accept_();
+	void accept();
 };
 
 Server::Server(int thread, int port, HttpHandlerFun handle_request)
 	: thread(thread), port(port), handle_request(handle_request)
 {
-	for (auto &x : clients)
-		x.server = this;
 }
 
 void Server::run() {
@@ -115,7 +143,7 @@ void Server::run() {
 	setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, (const void *)&optval , sizeof optval);
 
 	$check(bind(fd, (struct sockaddr *)&serveraddr, sizeof serveraddr) == 0);
-	$check(listen(fd, 10) == 0);
+	$check(listen(fd, 128) == 0);
 
 	epollfd = epoll_create1(0);
 	$check(epollfd >= 0);
@@ -126,12 +154,12 @@ void Server::run() {
 	$check(epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &ev) == 0);
 
 	while (1) {
-		struct epoll_event events[32];
+		struct epoll_event events[64];
 		int count = epoll_wait(epollfd, events, sizeof events / sizeof *events, -1);
 		$check(count > 0);
 		for (int i = 0; i < count; i++) {
 			if (events[i].data.ptr == nullptr)
-				accept_();
+				accept();
 			else {
 				auto client = (Client *) events[i].data.ptr;
 				if (events[i].events & EPOLLIN)
@@ -143,42 +171,54 @@ void Server::run() {
 	}
 }
 
-void Server::accept_() {
-	for (auto &client : clients) {
-		if (client.fd >= 0)
-			continue;
-		client.accept_();
-		return;
+void Server::accept() {
+	mut.lock();
+	Client *client = client_pool.get();
+	mut.unlock();
+	if (client) {
+		client->accept(this);
+	} else {
+		$warn("No free clients!");
+		int fd = ::accept(this->fd, NULL, NULL);
+		if (fd < 0) {
+			$warn("Cant accept: %s", strerror(errno));
+			return;
+		}
+		close(fd);
 	}
-
-	$warn("No free clients!");
-	int fd = accept(this->fd, NULL, NULL);
-	if (fd < 0) {
-		$warn("Cant accept: %s", strerror(errno));
-		return;
-	}
-	close(fd);
 }
 
-Client::Client() : input(*this), output(*this) {
+Client::Client() : server(nullptr), input(*this), output(*this) {
 	fd = -1;
 }
 
-void Client::accept_() {
+void Client::accept(Server *server) {
+	$check(this->server == nullptr);
+
+	this->server = server;
+
 	sockaddr_in clientaddr;
-	socklen_t clientlen;
-	fd = accept(server->fd, (struct sockaddr *)&clientaddr, &clientlen);
+	socklen_t clientlen = sizeof clientaddr;
+	fd = ::accept(server->fd, (struct sockaddr *)&clientaddr, &clientlen);
 	$check(fd >= 0);
 
 	epollctl(EPOLL_CTL_ADD, false);
+
+	int flags = fcntl(fd, F_GETFL, 0);
+	$check(fcntl(fd, F_SETFL, flags | O_NONBLOCK) == 0);
+
 	input.reset();
 }
 
-void Client::close_() {
+void Client::close() {
 	if (fd < 0) return;
 	epollctl(EPOLL_CTL_DEL);
-	close(fd);
+	::close(fd);
 	fd = -1;
+	server = nullptr;
+	mut.lock();
+	client_pool.put(this);
+	mut.unlock();
 }
 
 void Client::epollctl(int op, bool write) {
@@ -239,6 +279,8 @@ void Client::handle_request() {
 	output.start = pad - prepended;
 	output.size = prepended + req.reply_length;
 	output.done = 0;
+
+	output.write();
 }
 
 void Client::on_read() {
@@ -256,6 +298,8 @@ Output::Output(Client &client) : client(client) {
 void Output::write() {
 	ssize_t s = ::write(client.fd, buf + done + start, size - done);
 	if (s < 0) {
+		//if (errno == EAGAIN || errno == EWOULDBLOCK)
+		//	return;
 		$warn("write: %s", strerror(errno));
 		return;
 	}
@@ -263,11 +307,11 @@ void Output::write() {
 	done += s;
 
 	if (done >= size) {
-		if (client.input.http_requst_line.keep_alive) {
+		if (client.input.http_requst_line.keep_alive && 0) {
 			client.epollctl(EPOLL_CTL_MOD, false);
 			client.input.reset();
 		} else {
-			client.close_();
+			client.close();
 		}
 	}
 }
@@ -291,7 +335,7 @@ void Input::read() {
 	ssize_t new_size =
 		::read(client.fd, buf + size, sizeof buf - size);
 	if (new_size <= 0) {
-		client.close_();
+		client.close();
 		return;
 	}
 
@@ -362,6 +406,7 @@ void Input::process_line() {
 }
 
 void run_http_server(int port, HttpHandlerFun f) {
+	
 	std::thread threads[4];
 	int i = 0;
 	for (auto &thread : threads) {
