@@ -199,6 +199,7 @@ void Client::handle_request() {
 		CODE_500[] = "500 Internal Server Error",
 		REST[]     = "\r\n"
 		             "Connection: Keep-Alive\r\n"
+			     "Server: B\r\n"
 		             "Content-Length: ",
 		RNRN[]     = "\r\n\r\n";
 	size_t pad = 128, prepended = 0;
