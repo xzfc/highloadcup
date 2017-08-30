@@ -64,6 +64,7 @@ struct Client {
 	Server *server;
 
 	int fd;
+	bool keep_alive;
 	Input  input;
 	Output output;
 
@@ -172,6 +173,8 @@ void Client::accept_() {
 
 	epollctl(EPOLL_CTL_ADD, false);
 	input.reset();
+
+	keep_alive = false;
 }
 
 void Client::close_() {
@@ -263,8 +266,12 @@ void Output::write() {
 	done += s;
 
 	if (done >= size) {
-		client.epollctl(EPOLL_CTL_MOD, false);
-		client.input.reset();
+		if (client.keep_alive) {
+			client.epollctl(EPOLL_CTL_MOD, false);
+			client.input.reset();
+		} else {
+			client.close_();
+		}
 	}
 }
 
@@ -325,6 +332,7 @@ void Input::read() {
 
 void Input::process_line() {
 	static const char ContentLength[] = "Content-Length: ";
+	static const char KeepAlive[] = "Connection: Keep-Alive";
 	// std::cout << "Line: `" << buf+line_start << "`\n";
 
 	if (line_state == 0) {
@@ -347,7 +355,8 @@ void Input::process_line() {
 				  sizeof ContentLength - 1) == 0) {
 			content_length = atoi(
 				buf + line_start + sizeof ContentLength - 1);
-		}
+		} else if (strcmp(buf + line_start, KeepAlive) == 0)
+			client.keep_alive = true;
 		return;
 	}
 }
