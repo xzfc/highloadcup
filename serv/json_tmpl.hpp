@@ -29,9 +29,7 @@ struct JsonHandler<$DATA> : rapidjson::BaseReaderHandler<> {
 			} else {
 				if (!mask.is_full()) $err;
 				state = 3;
-				mut.lock();
-				All::add(data);
-				mut.unlock();
+				::add(data);
 				return true;
 			}
 		default: $err;

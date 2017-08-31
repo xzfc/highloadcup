@@ -5,14 +5,6 @@ namespace rapidjson { typedef ::std::size_t SizeType; }
 #include "rapidjson/reader.h"
 #include "rapidjson/filereadstream.h"
 
-#include <iostream>
-#include <shared_mutex>
-#include <boost/filesystem.hpp>
-
-#include "json.hpp"
-
-extern std::shared_mutex mut; // server.cpp
-
 #define $key(WHAT, STATE, FIELD) \
 	if (!strcmp(str, WHAT)) { \
 		if (mask.FIELD) \
@@ -88,56 +80,14 @@ template <class Data> struct JsonHandler;
 #define $STRING_HANDLER
 #include "json_tmpl.hpp"
 
-bool starts_with(const std::string &str, const char *prefix)
-{
-	return str.compare(0, strlen(prefix), prefix) == 0;
-}
-
 template <class Data>
-static void run_parser(const boost::filesystem::path &path, const char *prefix) {
-	if (!starts_with(path.filename().string(), prefix))
-		return;
-
-	char buffer[2048];
+void run_parser(std::vector<char> &file) {
 	rapidjson::Reader reader;
-	FILE *fp = fopen(path.string().c_str(), "r");
-	rapidjson::FileReadStream stream(fp, buffer, sizeof buffer);
+	rapidjson::MemoryStream stream(file.data(), file.size());
 	JsonHandler<Data> handler(false);
 	reader.Parse(stream, handler);
-	fclose(fp);
 }
 
-void parse(const char *dir) {
-	for (auto &it: boost::filesystem::directory_iterator(dir)) {
-		auto path = it.path();
-		run_parser<User>(path, "users_");
-		run_parser<Loct>(path, "locations_");
-		run_parser<Vist>(path, "visits_");
-	}
-}
-
-template <class Data>
-static bool json_parse_single_tmpl(const std::string &json, Data &data, typename Data::Mask &mask)
-{
-	rapidjson::Reader reader;
-	rapidjson::MemoryStream stream(json.c_str(), json.size());
-	JsonHandler<Data> handler(true);
-	bool ok = reader.Parse(stream, handler);
-	if (ok) {
-		data = handler.data;
-		mask = handler.mask;
-	}
-	return ok;
-}
-
-bool json_parse_single(const std::string &json, User &data, UserMask &mask) {
-	return json_parse_single_tmpl(json, data, mask);
-}
-
-bool json_parse_single(const std::string &json, Loct &data, LoctMask &mask) {
-	return json_parse_single_tmpl(json, data, mask);
-}
-
-bool json_parse_single(const std::string &json, Vist &data, VistMask &mask) {
-	return json_parse_single_tmpl(json, data, mask);
-}
+template void run_parser<User>(std::vector<char> &);
+template void run_parser<Loct>(std::vector<char> &);
+template void run_parser<Vist>(std::vector<char> &);

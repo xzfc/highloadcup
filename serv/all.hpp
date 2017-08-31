@@ -1,6 +1,5 @@
 #pragma once
 
-#include <boost/optional.hpp>
 #include <cstdint>
 #include <cstring>
 #include <map>
@@ -86,45 +85,9 @@ struct Vist {
 	typedef VistMask Mask;
 };
 
-struct VistData {
-	uint8_t     mark;
-	time_t      visited;
-	std::string place;
-};
+void add(const User &);
+void add(const Loct &);
+void add(const Vist &);
 
-namespace All {
-	bool add(const User &);
-	bool add(const Loct &);
-	bool add(const Vist &);
-
-	bool update(const User &, UserMask);
-	bool update(const Loct &, LoctMask);
-	bool update(const Vist &, VistMask);
-
-	User *get_user(uint32_t id);
-	Loct *get_loct(uint32_t id);
-	Vist *get_vist(uint32_t id);
-
-	template <class Data> Data *get(uint32_t id);
-
-	bool get_vists(
-		std::vector<VistData> &out,
-		uint32_t id,
-		time_t       from_date,
-		time_t       to_date,
-		const char  *country,
-		uint32_t     to_distance
-	);
-
-	double get_avg(
-		uint32_t id,
-		time_t   from_date,
-		time_t   to_date,
-		int32_t  from_age,
-		int32_t  to_age,
-		char     gender
-	);
-
-	void optimize();
-	void set_options(time_t now, bool full);
-};
+template <class Data>
+void run_parser(std::vector<char> &);
